@@ -1,124 +1,257 @@
 Metadata-Version: 2.4
-Name: aiohappyeyeballs
-Version: 2.7.1
-Summary: Happy Eyeballs for asyncio
-License: PSF-2.0
-License-File: LICENSE
-Author: J. Nick Koston
-Author-email: nick@koston.org
-Requires-Python: >=3.10
+Name: aiohttp
+Version: 3.14.4
+Summary: Async http client/server framework (asyncio)
+Maintainer-email: aiohttp team <team@aiohttp.org>
+License-Expression: Apache-2.0 AND MIT
+Project-URL: Homepage, https://github.com/aio-libs/aiohttp
+Project-URL: Chat: Matrix, https://matrix.to/#/#aio-libs:matrix.org
+Project-URL: Chat: Matrix Space, https://matrix.to/#/#aio-libs-space:matrix.org
+Project-URL: CI: GitHub Actions, https://github.com/aio-libs/aiohttp/actions?query=workflow%3ACI
+Project-URL: Coverage: codecov, https://codecov.io/github/aio-libs/aiohttp
+Project-URL: Docs: Changelog, https://docs.aiohttp.org/en/stable/changes.html
+Project-URL: Docs: RTD, https://docs.aiohttp.org
+Project-URL: GitHub: issues, https://github.com/aio-libs/aiohttp/issues
+Project-URL: GitHub: repo, https://github.com/aio-libs/aiohttp
 Classifier: Development Status :: 5 - Production/Stable
+Classifier: Framework :: AsyncIO
 Classifier: Intended Audience :: Developers
-Classifier: Natural Language :: English
-Classifier: Operating System :: OS Independent
-Classifier: Topic :: Software Development :: Libraries
+Classifier: Operating System :: POSIX
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Programming Language :: Python
 Classifier: Programming Language :: Python :: 3
 Classifier: Programming Language :: Python :: 3.10
 Classifier: Programming Language :: Python :: 3.11
 Classifier: Programming Language :: Python :: 3.12
 Classifier: Programming Language :: Python :: 3.13
 Classifier: Programming Language :: Python :: 3.14
-Classifier: License :: OSI Approved :: Python Software Foundation License
-Project-URL: Bug Tracker, https://github.com/aio-libs/aiohappyeyeballs/issues
-Project-URL: Changelog, https://github.com/aio-libs/aiohappyeyeballs/blob/main/CHANGELOG.md
-Project-URL: Documentation, https://aiohappyeyeballs.readthedocs.io
-Project-URL: Repository, https://github.com/aio-libs/aiohappyeyeballs
-Description-Content-Type: text/markdown
+Classifier: Topic :: Internet :: WWW/HTTP
+Requires-Python: >=3.10
+Description-Content-Type: text/x-rst
+License-File: LICENSE.txt
+License-File: vendor/llhttp/LICENSE
+Requires-Dist: aiohappyeyeballs>=2.5.0
+Requires-Dist: aiosignal>=1.4.0
+Requires-Dist: async-timeout<6.0,>=4.0; python_version < "3.11"
+Requires-Dist: attrs>=17.3.0
+Requires-Dist: frozenlist>=1.1.1
+Requires-Dist: multidict<7.0,>=4.5
+Requires-Dist: propcache>=0.2.0
+Requires-Dist: typing_extensions>=4.4; python_version < "3.13"
+Requires-Dist: yarl<2.0,>=1.25.1
+Provides-Extra: speedups
+Requires-Dist: aiodns>=3.3.0; (sys_platform != "android" and sys_platform != "ios") and extra == "speedups"
+Requires-Dist: Brotli>=1.2; (platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios") and extra == "speedups"
+Requires-Dist: brotlicffi>=1.2; platform_python_implementation != "CPython" and extra == "speedups"
+Requires-Dist: backports.zstd; (platform_python_implementation == "CPython" and python_version < "3.14" and sys_platform != "android" and sys_platform != "ios") and extra == "speedups"
+Dynamic: license-file
 
-# aiohappyeyeballs
+==================================
+Async http client/server framework
+==================================
 
-<p align="center">
-  <a href="https://github.com/aio-libs/aiohappyeyeballs/actions/workflows/ci.yml?query=branch%3Amain">
-    <img src="https://img.shields.io/github/actions/workflow/status/aio-libs/aiohappyeyeballs/ci-cd.yml?branch=main&label=CI&logo=github&style=flat-square" alt="CI Status" >
-  </a>
-  <a href="https://aiohappyeyeballs.readthedocs.io">
-    <img src="https://img.shields.io/readthedocs/aiohappyeyeballs.svg?logo=read-the-docs&logoColor=fff&style=flat-square" alt="Documentation Status">
-  </a>
-  <a href="https://codecov.io/gh/aio-libs/aiohappyeyeballs">
-    <img src="https://img.shields.io/codecov/c/github/aio-libs/aiohappyeyeballs.svg?logo=codecov&logoColor=fff&style=flat-square" alt="Test coverage percentage">
-  </a>
-</p>
-<p align="center">
-  <a href="https://python-poetry.org/">
-    <img src="https://img.shields.io/badge/packaging-poetry-299bd7?style=flat-square&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAASCAYAAABrXO8xAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAJJSURBVHgBfZLPa1NBEMe/s7tNXoxW1KJQKaUHkXhQvHgW6UHQQ09CBS/6V3hKc/AP8CqCrUcpmop3Cx48eDB4yEECjVQrlZb80CRN8t6OM/teagVxYZi38+Yz853dJbzoMV3MM8cJUcLMSUKIE8AzQ2PieZzFxEJOHMOgMQQ+dUgSAckNXhapU/NMhDSWLs1B24A8sO1xrN4NECkcAC9ASkiIJc6k5TRiUDPhnyMMdhKc+Zx19l6SgyeW76BEONY9exVQMzKExGKwwPsCzza7KGSSWRWEQhyEaDXp6ZHEr416ygbiKYOd7TEWvvcQIeusHYMJGhTwF9y7sGnSwaWyFAiyoxzqW0PM/RjghPxF2pWReAowTEXnDh0xgcLs8l2YQmOrj3N7ByiqEoH0cARs4u78WgAVkoEDIDoOi3AkcLOHU60RIg5wC4ZuTC7FaHKQm8Hq1fQuSOBvX/sodmNJSB5geaF5CPIkUeecdMxieoRO5jz9bheL6/tXjrwCyX/UYBUcjCaWHljx1xiX6z9xEjkYAzbGVnB8pvLmyXm9ep+W8CmsSHQQY77Zx1zboxAV0w7ybMhQmfqdmmw3nEp1I0Z+FGO6M8LZdoyZnuzzBdjISicKRnpxzI9fPb+0oYXsNdyi+d3h9bm9MWYHFtPeIZfLwzmFDKy1ai3p+PDls1Llz4yyFpferxjnyjJDSEy9CaCx5m2cJPerq6Xm34eTrZt3PqxYO1XOwDYZrFlH1fWnpU38Y9HRze3lj0vOujZcXKuuXm3jP+s3KbZVra7y2EAAAAAASUVORK5CYII=" alt="Poetry">
-  </a>
-  <a href="https://github.com/astral-sh/ruff">
-    <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff">
-  </a>
-  <a href="https://github.com/pre-commit/pre-commit">
-    <img src="https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white&style=flat-square" alt="pre-commit">
-  </a>
-</p>
-<p align="center">
-  <a href="https://pypi.org/project/aiohappyeyeballs/">
-    <img src="https://img.shields.io/pypi/v/aiohappyeyeballs.svg?logo=python&logoColor=fff&style=flat-square" alt="PyPI Version">
-  </a>
-  <img src="https://img.shields.io/pypi/pyversions/aiohappyeyeballs.svg?style=flat-square&logo=python&amp;logoColor=fff" alt="Supported Python versions">
-  <img src="https://img.shields.io/pypi/l/aiohappyeyeballs.svg?style=flat-square" alt="License">
-</p>
+.. image:: https://raw.githubusercontent.com/aio-libs/aiohttp/master/docs/aiohttp-plain.svg
+   :height: 64px
+   :width: 64px
+   :alt: aiohttp logo
 
----
+|
 
-**Documentation**: <a href="https://aiohappyeyeballs.readthedocs.io" target="_blank">https://aiohappyeyeballs.readthedocs.io </a>
+.. image:: https://github.com/aio-libs/aiohttp/workflows/CI/badge.svg
+   :target: https://github.com/aio-libs/aiohttp/actions?query=workflow%3ACI
+   :alt: GitHub Actions status for master branch
 
-**Source Code**: <a href="https://github.com/aio-libs/aiohappyeyeballs" target="_blank">https://github.com/aio-libs/aiohappyeyeballs </a>
+.. image:: https://codecov.io/gh/aio-libs/aiohttp/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/aio-libs/aiohttp
+   :alt: codecov.io status for master branch
 
----
+.. image:: https://badge.fury.io/py/aiohttp.svg
+   :target: https://pypi.org/project/aiohttp
+   :alt: Latest PyPI package version
 
-[Happy Eyeballs](https://en.wikipedia.org/wiki/Happy_Eyeballs)
-([RFC 8305](https://www.rfc-editor.org/rfc/rfc8305.html))
+.. image:: https://img.shields.io/pypi/dm/aiohttp
+   :target: https://pypistats.org/packages/aiohttp
+   :alt: Downloads count
 
-## Use case
+.. image:: https://readthedocs.org/projects/aiohttp/badge/?version=latest
+   :target: https://docs.aiohttp.org/
+   :alt: Latest Read The Docs
 
-This library exists to allow connecting with
-[Happy Eyeballs](https://en.wikipedia.org/wiki/Happy_Eyeballs)
-([RFC 8305](https://www.rfc-editor.org/rfc/rfc8305.html))
-when you
-already have a list of addrinfo and not a DNS name.
+.. image:: https://img.shields.io/endpoint?url=https://codspeed.io/badge.json
+   :target: https://codspeed.io/aio-libs/aiohttp
+   :alt: Codspeed.io status for aiohttp
 
-The stdlib version of `loop.create_connection()`
-will only work when you pass in an unresolved name which
-is not a good fit when using DNS caching or resolving
-names via another method such as `zeroconf`.
 
-## Installation
+Key Features
+============
 
-Install this via pip (or your favourite package manager):
+- Supports both client and server side of HTTP protocol.
+- Supports both client and server Web-Sockets out-of-the-box and avoids
+  Callback Hell.
+- Provides Web-server with middleware and pluggable routing.
 
-`pip install aiohappyeyeballs`
 
-## License
+Getting started
+===============
 
-[aiohappyeyeballs is licensed under the same terms as cpython itself.](https://github.com/python/cpython/blob/main/LICENSE)
+Client
+------
 
-## Example usage
+To get something from the web:
 
-```python
+.. code-block:: python
 
-addr_infos = await loop.getaddrinfo("example.org", 80)
+  import aiohttp
+  import asyncio
 
-socket = await start_connection(addr_infos)
-socket = await start_connection(addr_infos, local_addr_infos=local_addr_infos, happy_eyeballs_delay=0.2)
+  async def main():
 
-transport, protocol = await loop.create_connection(
-    MyProtocol, sock=socket, ...)
+      async with aiohttp.ClientSession() as session:
+          async with session.get('https://python.org') as response:
 
-# Remove the first address for each family from addr_info
-pop_addr_infos_interleave(addr_info, 1)
+              print("Status:", response.status)
+              print("Content-type:", response.headers['content-type'])
 
-# Remove all matching address from addr_info
-remove_addr_infos(addr_info, "dead::beef::")
+              html = await response.text()
+              print("Body:", html[:15], "...")
 
-# Convert a local_addr to local_addr_infos
-local_addr_infos = addr_to_addr_infos(("127.0.0.1",0))
-```
+  asyncio.run(main())
 
-## Credits
+This prints:
 
-This package contains code from cpython and is licensed under the same terms as cpython itself.
+.. code-block::
 
-This package was created with
-[Copier](https://copier.readthedocs.io/) and the
-[browniebroke/pypackage-template](https://github.com/browniebroke/pypackage-template)
-project template.
+    Status: 200
+    Content-type: text/html; charset=utf-8
+    Body: <!doctype html> ...
 
+Coming from `requests <https://requests.readthedocs.io/>`_ ? Read `why we need so many lines <https://aiohttp.readthedocs.io/en/latest/http_request_lifecycle.html>`_.
+
+Server
+------
+
+An example using a simple server:
+
+.. code-block:: python
+
+    # examples/server_simple.py
+    from aiohttp import web
+
+    async def handle(request):
+        name = request.match_info.get('name', "Anonymous")
+        text = "Hello, " + name
+        return web.Response(text=text)
+
+    async def wshandle(request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        async for msg in ws:
+            if msg.type == web.WSMsgType.text:
+                await ws.send_str("Hello, {}".format(msg.data))
+            elif msg.type == web.WSMsgType.binary:
+                await ws.send_bytes(msg.data)
+            elif msg.type == web.WSMsgType.close:
+                break
+
+        return ws
+
+
+    app = web.Application()
+    app.add_routes([web.get('/', handle),
+                    web.get('/echo', wshandle),
+                    web.get('/{name}', handle)])
+
+    if __name__ == '__main__':
+        web.run_app(app)
+
+
+Documentation
+=============
+
+https://aiohttp.readthedocs.io/
+
+
+Demos
+=====
+
+https://github.com/aio-libs/aiohttp-demos
+
+
+External links
+==============
+
+* `Third party libraries
+  <https://aiohttp.readthedocs.io/en/latest/third_party.html>`_
+* `Built with aiohttp
+  <https://aiohttp.readthedocs.io/en/latest/built_with.html>`_
+* `Powered by aiohttp
+  <https://aiohttp.readthedocs.io/en/latest/powered_by.html>`_
+
+Feel free to make a Pull Request for adding your link to these pages!
+
+
+Communication channels
+======================
+
+*aio-libs Discussions*: https://github.com/aio-libs/aiohttp/discussions
+
+*Matrix*: `#aio-libs:matrix.org <https://matrix.to/#/#aio-libs:matrix.org>`_
+
+We support `Stack Overflow
+<https://stackoverflow.com/questions/tagged/aiohttp>`_.
+Please add *aiohttp* tag to your question there.
+
+Requirements
+============
+
+- attrs_
+- multidict_
+- yarl_
+- frozenlist_
+
+Optionally you may install the aiodns_ library (highly recommended for sake of speed).
+
+.. _aiodns: https://pypi.python.org/pypi/aiodns
+.. _attrs: https://github.com/python-attrs/attrs
+.. _multidict: https://pypi.python.org/pypi/multidict
+.. _frozenlist: https://pypi.org/project/frozenlist/
+.. _yarl: https://pypi.python.org/pypi/yarl
+.. _async-timeout: https://pypi.python.org/pypi/async_timeout
+
+
+Keepsafe
+========
+
+The aiohttp community would like to thank Keepsafe
+(https://www.getkeepsafe.com) for its support in the early days of
+the project.
+
+
+Source code
+===========
+
+The latest developer version is available in a GitHub repository:
+https://github.com/aio-libs/aiohttp
+
+Benchmarks
+==========
+
+If you are interested in efficiency, the AsyncIO community maintains a
+list of benchmarks on the official wiki:
+https://github.com/python/asyncio/wiki/Benchmarks
+
+--------
+
+.. image:: https://img.shields.io/matrix/aio-libs:matrix.org?label=Discuss%20on%20Matrix%20at%20%23aio-libs%3Amatrix.org&logo=matrix&server_fqdn=matrix.org&style=flat
+   :target: https://matrix.to/#/%23aio-libs:matrix.org
+   :alt: Matrix Room — #aio-libs:matrix.org
+
+.. image:: https://img.shields.io/matrix/aio-libs-space:matrix.org?label=Discuss%20on%20Matrix%20at%20%23aio-libs-space%3Amatrix.org&logo=matrix&server_fqdn=matrix.org&style=flat
+   :target: https://matrix.to/#/%23aio-libs-space:matrix.org
+   :alt: Matrix Space — #aio-libs-space:matrix.org
+
+.. image:: https://insights.linuxfoundation.org/api/badge/health-score?project=aiohttp
+   :target: https://insights.linuxfoundation.org/project/aiohttp
+   :alt: LFX Health Score
