@@ -1,23 +1,59 @@
 {
-  "name": "mal-food-nutrition",
-  "version": "1.0.0",
-  "private": true,
-  "description": "Mal-Food Nutrition - nutrition and food diary application",
-  "main": "server.js",
-  "scripts": {
-    "build:static": "node scripts/build-static.mjs",
-    "prestart": "npm run build:static",
-    "start": "node server.js",
-    "predev": "npm run build:static",
-    "dev": "node --watch server.js"
+  "name": "better-sqlite3",
+  "version": "12.11.1",
+  "description": "The fastest and simplest library for SQLite in Node.js.",
+  "homepage": "http://github.com/WiseLibs/better-sqlite3",
+  "author": "Joshua Wise <joshuathomaswise@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/WiseLibs/better-sqlite3.git"
+  },
+  "main": "lib/index.js",
+  "files": [
+    "binding.gyp",
+    "src/**/*.[ch]pp",
+    "lib/**",
+    "deps/**"
+  ],
+  "engines": {
+    "node": "20.x || 22.x || 23.x || 24.x || 25.x || 26.x"
   },
   "dependencies": {
-    "bcryptjs": "^3.0.2",
-    "better-sqlite3": "^12.4.1",
-    "cors": "^2.8.5",
-    "dotenv": "^17.2.2",
-    "express": "^5.1.0",
-    "express-rate-limit": "^8.2.1",
-    "jsonwebtoken": "^9.0.2"
-  }
+    "bindings": "^1.5.0",
+    "prebuild-install": "^7.1.1"
+  },
+  "overrides": {
+    "prebuild": {
+      "node-abi": "^4.25.0"
+    }
+  },
+  "devDependencies": {
+    "chai": "^4.3.8",
+    "cli-color": "^2.0.3",
+    "fs-extra": "^11.1.1",
+    "mocha": "^11.7.5",
+    "nodemark": "^0.3.0",
+    "prebuild": "^13.0.1",
+    "sqlite": "^5.0.1",
+    "sqlite3": "^5.1.6"
+  },
+  "scripts": {
+    "install": "prebuild-install || node-gyp rebuild --release",
+    "build-release": "node-gyp rebuild --release",
+    "build-debug": "node-gyp rebuild --debug",
+    "test": "mocha --exit --slow=75 --timeout=5000",
+    "benchmark": "node benchmark",
+    "download": "bash ./deps/download.sh"
+  },
+  "license": "MIT",
+  "keywords": [
+    "sql",
+    "sqlite",
+    "sqlite3",
+    "transactions",
+    "user-defined functions",
+    "aggregate functions",
+    "window functions",
+    "database"
+  ]
 }

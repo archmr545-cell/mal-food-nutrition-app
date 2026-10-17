@@ -1,51 +1,99 @@
-# Mal-Food Nutrition
+# better-sqlite3 [![Build Status](https://github.com/JoshuaWise/better-sqlite3/actions/workflows/build.yml/badge.svg)](https://github.com/JoshuaWise/better-sqlite3/actions/workflows/build.yml?query=branch%3Amaster)
 
-Aplikasi statis ini dapat di-deploy ke GitHub Pages. Supabase menangani autentikasi, database, laporan bantuan password, dan statistik pengunjung. Jangan menaruh service-role key di frontend atau repository.
+The fastest and simplest library for SQLite in Node.js.
 
-## Menyiapkan Supabase
-1. Buat project Supabase.
-2. Di **SQL Editor**, jalankan `supabase/migrations/20261010000000_initial_schema.sql`.
-3. Impor katalog publik dengan menjalankan `supabase/seed.sql`. Berkas seed berisi katalog makanan saja; data akun dan diary lokal tidak ikut diekspor.
-4. Di **Authentication → URL Configuration**, masukkan `https://archmr545-cell.github.io/mal-food-nutrtion/` sebagai Site URL dan `https://archmr545-cell.github.io/mal-food-nutrtion/**` sebagai URL redirect yang diizinkan. Tambahkan URL lokal saat pengembangan.
-5. Pastikan pengiriman email Supabase aktif supaya konfirmasi pendaftaran dan link reset password dapat dikirim.
-6. Daftarkan akun admin pertama melalui aplikasi, lalu jalankan di SQL Editor:
-   ```sql
-   update public.profiles
-   set role = 'admin'
-   where lower(email) = lower('EMAIL_ADMIN_KAMU');
-   ```
-   Jangan menaruh password, service-role key, atau rahasia di SQL publik ataupun kode frontend.
+- Full transaction support
+- High performance, efficiency, and safety
+- Easy-to-use synchronous API *(better concurrency than an asynchronous API... yes, you read that correctly)*
+- Support for user-defined functions, aggregates, virtual tables, and extensions
+- 64-bit integers *(invisible until you need them)*
+- Worker thread support *(for large/slow queries)*
 
-## Menjalankan lokal
-1. Install Node.js 20+ dan jalankan `npm install`.
-2. Salin `.env.example` menjadi `.env`. Untuk login lokal, isi `JWT_SECRET` minimal 32 karakter, `ADMIN_EMAIL`, dan `ADMIN_PASSWORD` minimal 8 karakter. Server lokal menggunakan akun dan database SQLite yang ada. Opsional: isi `SUPABASE_URL` dan `SUPABASE_ANON_KEY` dari **Project Settings → API** Supabase untuk mencoba backend Supabase. Jangan gunakan secret/service-role key.
-3. Jalankan `npm run dev` dan buka `http://localhost:3000`.
+## Help this project stay strong! &#128170;
 
-Tanpa konfigurasi Supabase, frontend lokal memakai API Express dan database SQLite. Jika URL dan anon key Supabase tersedia, frontend memakai Supabase. GitHub Pages tetap memerlukan project Supabase karena tidak dapat menjalankan Express/SQLite.
+`better-sqlite3` is used by thousands of developers and engineers on a daily basis. Long nights and weekends were spent keeping this project strong and dependable, with no ask for compensation or funding, until now. If your company uses `better-sqlite3`, ask your manager to consider supporting the project:
 
-## Deploy ke GitHub Pages
-1. Push folder proyek ke repository `archmr545-cell/mal-food-nutrtion` pada branch `main`.
-2. Di **Settings → Secrets and variables → Actions → Variables**, tambahkan `SUPABASE_URL` dan `SUPABASE_ANON_KEY`. Publishable/anon key memang digunakan oleh frontend; jangan tambahkan service-role/secret key ke GitHub Pages.
-3. Di **Settings → Pages → Build and deployment**, pilih **GitHub Actions**.
-4. Workflow `.github/workflows/deploy-pages.yml` membangun lalu menerbitkan folder `public`.
+- [Become a GitHub sponsor](https://github.com/sponsors/JoshuaWise)
+- [Become a backer on Patreon](https://www.patreon.com/joshuawise)
+- [Make a one-time donation on PayPal](https://www.paypal.me/joshuathomaswise)
 
-Alamat situs: <https://archmr545-cell.github.io/mal-food-nutrtion/>
+## How other libraries compare
 
-Alamat admin: <https://archmr545-cell.github.io/mal-food-nutrtion/admin/>
+|   |select 1 row &nbsp;`get()`&nbsp;|select 100 rows &nbsp;&nbsp;`all()`&nbsp;&nbsp;|select 100 rows `iterate()` 1-by-1|insert 1 row `run()`|insert 100 rows in a transaction|
+|---|---|---|---|---|---|
+|better-sqlite3|1x|1x|1x|1x|1x|
+|[sqlite](https://www.npmjs.com/package/sqlite) and [sqlite3](https://www.npmjs.com/package/sqlite3)|11.7x slower|2.9x slower|24.4x slower|2.8x slower|15.6x slower|
 
-Semua tabel memakai Row Level Security. Admin awal dipromosikan lewat Supabase SQL Editor; pengunjung situs hanya bisa mencatat kunjungan anonim. Penghitungan pengunjung memakai ID acak di browser dan ID sesi tab, tidak menyimpan alamat IP, nama, atau email pengunjung. Angka ini merupakan estimasi browser-perangkat unik, bukan identitas orang yang terverifikasi.
+> You can verify these results by [running the benchmark yourself](./docs/benchmark.md).
 
-Data akun dan diary SQLite lokal yang lama **tidak otomatis diunggah** ke Supabase. Pengguna perlu mendaftar di layanan baru; jangan mempublikasikan `database.db`.
+## Installation
 
-## Fitur
-Menu Makanan menampilkan semua item katalog beserta nilai gizi perkiraan per porsi; 100 bahan sehat ditambahkan di atas makanan bawaan. Item katalog baru ditambahkan otomatis tanpa menggandakan makanan yang sudah ada.
-Halaman Resep menyediakan 100 resep sehat dengan bahan, langkah memasak, waktu, serta perkiraan kalori dan protein per porsi.
-Kalkulator kalori memperkirakan kebutuhan energi untuk semua usia: estimasi usia 0–2 tahun, rumus kebutuhan anak/remaja usia 3–17 tahun, dan BMR/TDEE dewasa mulai usia 18 tahun. Perhitungan memakai jenis kelamin, berat, tinggi (jika digunakan oleh rumus), serta faktor aktivitas sesuai kelompok usia.
-Mode Kalori makanan mencatat makanan harian dari database, menghitung total kalori, protein, karbohidrat, dan lemak berdasarkan porsi, lalu memberi saran gizi umum. Catatan disimpan di perangkat untuk akun dan tanggal tersebut.
+```bash
+npm install better-sqlite3
+```
 
-## Catatan
-- Password selalu disimpan sebagai hash satu arah, sehingga password lama tidak dapat dilihat. Admin dapat mengatur password baru untuk akun lokal dari daftar user atau laporan bantuan; sesi lama user dicabut setelah reset.
-- User dapat mengganti password sendiri di halaman Profil dengan mengonfirmasi password saat ini. Setelah diganti, user perlu login kembali.
-- Permintaan lupa password berisi email dan pesan bantuan saja, bukan password baru. Di mode Supabase, admin mengirim link reset melalui Supabase Auth.
-- Jangan mengaktifkan kebijakan database tanpa Row Level Security.
-- `.env`, kunci service-role, dan database SQLite lokal tidak boleh dipublikasikan.
+> Requires a [currently supported Node.js](https://nodejs.org/en/about/previous-releases) version. Prebuilt binaries are available for [LTS versions](https://nodejs.org/en/about/previous-releases). If you have trouble installing, check the [troubleshooting guide](./docs/troubleshooting.md).
+
+## Usage
+
+```js
+const db = require('better-sqlite3')('foobar.db', options);
+
+const row = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+console.log(row.firstName, row.lastName, row.email);
+```
+
+Though not required, [it is generally important to set the WAL pragma for performance reasons](https://github.com/WiseLibs/better-sqlite3/blob/master/docs/performance.md).
+
+```js
+db.pragma('journal_mode = WAL');
+```
+
+##### In ES6 module notation:
+
+```js
+import Database from 'better-sqlite3';
+const db = new Database('foobar.db', options);
+db.pragma('journal_mode = WAL');
+```
+
+## Why should I use this instead of [node-sqlite3](https://github.com/mapbox/node-sqlite3)?
+
+- `node-sqlite3` uses asynchronous APIs for tasks that are either CPU-bound or serialized. That's not only bad design, but it wastes tons of resources. It also causes [mutex thrashing](https://en.wikipedia.org/wiki/Resource_contention) which has devastating effects on performance.
+- `node-sqlite3` exposes low-level (C language) memory management functions. `better-sqlite3` does it the JavaScript way, allowing the garbage collector to worry about memory management.
+- `better-sqlite3` is simpler to use, and it provides nice utilities for some operations that are very difficult or impossible in `node-sqlite3`.
+- `better-sqlite3` is much faster than `node-sqlite3` in most cases, and just as fast in all other cases.
+
+#### When is this library not appropriate?
+
+In most cases, if you're attempting something that cannot be reasonably accomplished with `better-sqlite3`, it probably cannot be reasonably accomplished with SQLite in general. For example, if you're executing queries that take one second to complete, and you expect to have many concurrent users executing those queries, no amount of asynchronicity will save you from SQLite's serialized nature. Fortunately, SQLite is very *very* fast. With proper indexing, we've been able to achieve upward of 2000 queries per second with 5-way-joins in a 60 GB database, where each query was handling 5–50 kilobytes of real data.
+
+If you have a performance problem, the most likely causes are inefficient queries, improper indexing, or a lack of [WAL mode](./docs/performance.md)—not `better-sqlite3` itself. However, there are some cases where `better-sqlite3` could be inappropriate:
+
+- If you expect a high volume of concurrent reads each returning many megabytes of data (i.e., videos)
+- If you expect a high volume of concurrent writes (i.e., a social media site)
+- If your database's size is near the terabyte range
+
+For these situations, you should probably use a full-fledged RDBMS such as [PostgreSQL](https://www.postgresql.org/).
+
+## Upgrading
+
+Upgrading your `better-sqlite3` dependency can potentially introduce breaking changes, either in the `better-sqlite3` API (if you upgrade to a new [major version](https://semver.org/)), or between your existing database(s) and the underlying version of SQLite. Before upgrading, review:
+
+* [`better-sqlite3` release notes](https://github.com/WiseLibs/better-sqlite3/releases)
+* [SQLite release history](https://www.sqlite.org/changes.html)
+
+# Documentation
+
+- [API documentation](./docs/api.md)
+- [Performance](./docs/performance.md) (also see [benchmark results](./docs/benchmark.md))
+- [64-bit integer support](./docs/integer.md)
+- [Worker thread support](./docs/threads.md)
+- [Unsafe mode (advanced)](./docs/unsafe.md)
+- [SQLite compilation (advanced)](./docs/compilation.md)
+- [Contribution rules](./docs/contribution.md)
+- [Code of conduct](./docs/conduct.md)
+
+# License
+
+[MIT](./LICENSE)
