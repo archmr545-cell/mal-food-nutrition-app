@@ -1,8 +1,45 @@
-# SPDX-FileCopyrightText: 2015 Eric Larson
-#
-# SPDX-License-Identifier: Apache-2.0
+from .core import (
+    IDNABidiError,
+    IDNAError,
+    InvalidCodepoint,
+    InvalidCodepointContext,
+    alabel,
+    check_bidi,
+    check_hyphen_ok,
+    check_initial_combiner,
+    check_label,
+    check_nfc,
+    decode,
+    encode,
+    ulabel,
+    uts46_remap,
+    valid_contextj,
+    valid_contexto,
+    valid_label_length,
+    valid_string_length,
+)
+from .intranges import intranges_contain
+from .package_data import __version__
 
-from pip._vendor.cachecontrol.caches.file_cache import FileCache, SeparateBodyFileCache
-from pip._vendor.cachecontrol.caches.redis_cache import RedisCache
-
-__all__ = ["FileCache", "SeparateBodyFileCache", "RedisCache"]
+__all__ = [
+    "__version__",
+    "IDNABidiError",
+    "IDNAError",
+    "InvalidCodepoint",
+    "InvalidCodepointContext",
+    "alabel",
+    "check_bidi",
+    "check_hyphen_ok",
+    "check_initial_combiner",
+    "check_label",
+    "check_nfc",
+    "decode",
+    "encode",
+    "intranges_contain",
+    "ulabel",
+    "uts46_remap",
+    "valid_contextj",
+    "valid_contexto",
+    "valid_label_length",
+    "valid_string_length",
+]
