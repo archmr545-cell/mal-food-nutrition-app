@@ -1,150 +1,387 @@
-import logging
-import os
-from optparse import Values
+"""Download files with progress indicators."""
 
-from pip._internal.cli import cmdoptions
-from pip._internal.cli.cmdoptions import make_target_python
-from pip._internal.cli.req_command import RequirementCommand, with_cleanup
-from pip._internal.cli.status_codes import SUCCESS
-from pip._internal.operations.build.build_tracker import get_build_tracker
-from pip._internal.utils.misc import ensure_dir, normalize_path, write_output
-from pip._internal.utils.temp_dir import TempDirectory
+from __future__ import annotations
+
+import email.message
+import logging
+import mimetypes
+import os
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
+from http import HTTPStatus
+from typing import BinaryIO
+
+from pip._vendor.requests import PreparedRequest
+from pip._vendor.requests.models import Response
+from pip._vendor.urllib3 import HTTPResponse as URLlib3Response
+from pip._vendor.urllib3._collections import HTTPHeaderDict
+from pip._vendor.urllib3.exceptions import ProtocolError, ReadTimeoutError
+
+from pip._internal.cli.progress_bars import BarType, get_download_progress_renderer
+from pip._internal.exceptions import (
+    ConnectionFailedError,
+    ConnectionTimeoutError,
+    IncompleteDownloadError,
+    NetworkConnectionError,
+    ProxyConnectionError,
+    SSLVerificationError,
+)
+from pip._internal.models.link import (
+    Link,
+    PathComponent,
+    as_path_component,
+    join_within_directory,
+)
+from pip._internal.network.cache import SafeFileCache, is_from_cache
+from pip._internal.network.session import CacheControlAdapter, PipSession
+from pip._internal.network.utils import HEADERS, raise_for_status, response_chunks
+from pip._internal.utils.misc import format_size, redact_auth_from_url, splitext
 
 logger = logging.getLogger(__name__)
 
 
-class DownloadCommand(RequirementCommand):
+def _get_http_response_size(resp: Response) -> int | None:
+    try:
+        size = int(resp.headers["content-length"])
+    except (ValueError, KeyError, TypeError):
+        return None
+    # A negative length would make _FileDownload.is_incomplete() report a
+    # truncated download as complete, so treat it as unknown instead.
+    if size < 0:
+        return None
+    return size
+
+
+def _get_http_response_etag_or_last_modified(resp: Response) -> str | None:
     """
-    Download packages from:
-
-    - PyPI (and other indexes) using requirement specifiers.
-    - VCS project urls.
-    - Local project directories.
-    - Local or remote source archives.
-
-    pip also supports downloading from "requirements files", which provide
-    an easy way to specify a whole environment to be downloaded.
+    Return either the ETag or Last-Modified header (or None if neither exists).
+    The return value can be used in an If-Range header.
     """
+    return resp.headers.get("etag", resp.headers.get("last-modified"))
 
-    usage = """
-      %prog [options] <requirement specifier> [package-index-options] ...
-      %prog [options] -r <requirements file> [package-index-options] ...
-      %prog [options] <vcs project url> ...
-      %prog [options] <local project path> ...
-      %prog [options] <archive url/path> ..."""
 
-    def add_options(self) -> None:
-        self.cmd_opts.add_option(cmdoptions.constraints())
-        self.cmd_opts.add_option(cmdoptions.build_constraints())
-        self.cmd_opts.add_option(cmdoptions.requirements())
-        self.cmd_opts.add_option(cmdoptions.requirements_from_scripts())
-        self.cmd_opts.add_option(cmdoptions.no_deps())
-        self.cmd_opts.add_option(cmdoptions.only_deps())
-        self.cmd_opts.add_option(cmdoptions.src())
-        self.cmd_opts.add_option(cmdoptions.require_hashes())
-        self.cmd_opts.add_option(cmdoptions.no_require_hashes())
-        self.cmd_opts.add_option(cmdoptions.progress_bar())
-        self.cmd_opts.add_option(cmdoptions.no_build_isolation())
-        self.cmd_opts.add_option(cmdoptions.use_pep517())
-        self.cmd_opts.add_option(cmdoptions.check_build_deps())
-        self.cmd_opts.add_option(cmdoptions.ignore_requires_python())
+def _log_download(
+    resp: Response,
+    link: Link,
+    progress_bar: BarType,
+    total_length: int | None,
+    range_start: int | None = 0,
+) -> Iterable[bytes]:
+    if logger.getEffectiveLevel() > logging.INFO:
+        url = link.url_without_fragment
+    else:
+        url = link.show_url
 
-        self.cmd_opts.add_option(
-            "-d",
-            "--dest",
-            "--destination-dir",
-            "--destination-directory",
-            dest="download_dir",
-            metavar="dir",
-            default=os.curdir,
-            help="Download packages into <dir>.",
+    logged_url = redact_auth_from_url(url)
+
+    if total_length:
+        if range_start:
+            logged_url = (
+                f"{logged_url} ({format_size(range_start)}/{format_size(total_length)})"
+            )
+        else:
+            logged_url = f"{logged_url} ({format_size(total_length)})"
+
+    if is_from_cache(resp):
+        logger.info("Using cached %s", logged_url)
+    elif range_start:
+        logger.info("Resuming download %s", logged_url)
+    else:
+        logger.info("Downloading %s", logged_url)
+
+    if logger.getEffectiveLevel() > logging.INFO:
+        show_progress = False
+    elif is_from_cache(resp):
+        show_progress = False
+    elif not total_length:
+        show_progress = True
+    elif total_length > (512 * 1024):
+        show_progress = True
+    else:
+        show_progress = False
+
+    chunks = response_chunks(resp)
+
+    if not show_progress:
+        return chunks
+
+    renderer = get_download_progress_renderer(
+        bar_type=progress_bar, size=total_length, initial_progress=range_start
+    )
+    return renderer(chunks)
+
+
+def sanitize_content_filename(filename: str) -> str:
+    """
+    Sanitize the "filename" value from a Content-Disposition header.
+    """
+    return os.path.basename(filename)
+
+
+def parse_content_disposition(content_disposition: str, default_filename: str) -> str:
+    """
+    Parse the "filename" value from a Content-Disposition header, and
+    return the default filename if the result is empty.
+    """
+    m = email.message.Message()
+    m["content-type"] = content_disposition
+    filename = m.get_param("filename")
+    if filename:
+        # We need to sanitize the filename to prevent directory traversal
+        # in case the filename contains ".." path parts.
+        filename = sanitize_content_filename(str(filename))
+    return filename or default_filename
+
+
+def _get_http_response_filename(resp: Response, link: Link) -> PathComponent:
+    """Get an ideal filename from the given HTTP response, falling back to
+    the link filename if not provided.
+
+    The result is validated as a single path component, so it can be joined onto
+    a download directory without escaping it.
+    """
+    filename: str = link.filename  # fallback
+    # Have a look at the Content-Disposition header for a better guess
+    content_disposition = resp.headers.get("content-disposition")
+    if content_disposition:
+        filename = parse_content_disposition(content_disposition, filename)
+    ext: str | None = splitext(filename)[1]
+    if not ext:
+        ext = mimetypes.guess_extension(resp.headers.get("content-type", ""))
+        if ext:
+            filename += ext
+    if not ext and link.url != resp.url:
+        ext = os.path.splitext(resp.url)[1]
+        if ext:
+            filename += ext
+    return as_path_component(filename)
+
+
+@dataclass
+class _FileDownload:
+    """Stores the state of a single link download."""
+
+    link: Link
+    output_file: BinaryIO
+    size: int | None
+    bytes_received: int = 0
+    reattempts: int = 0
+
+    def is_incomplete(self) -> bool:
+        return bool(self.size is not None and self.bytes_received < self.size)
+
+    def write_chunk(self, data: bytes) -> None:
+        self.bytes_received += len(data)
+        self.output_file.write(data)
+
+    def reset_file(self) -> None:
+        """Delete any saved data and reset progress to zero."""
+        self.output_file.seek(0)
+        self.output_file.truncate()
+        self.bytes_received = 0
+
+
+class Downloader:
+    def __init__(
+        self,
+        session: PipSession,
+        progress_bar: BarType,
+    ) -> None:
+        self._session = session
+        self._progress_bar = progress_bar
+        self._resume_retries = session.resume_retries
+        assert (
+            self._resume_retries >= 0
+        ), "Number of max resume retries must be bigger or equal to zero"
+
+    def batch(
+        self, links: Iterable[Link], location: str
+    ) -> Iterable[tuple[Link, tuple[str, str]]]:
+        """Convenience method to download multiple links."""
+        for link in links:
+            filepath, content_type = self(link, location)
+            yield link, (filepath, content_type)
+
+    def __call__(self, link: Link, location: str) -> tuple[str, str]:
+        """Download a link and save it under location."""
+        resp = self._http_get(link)
+        download_size = _get_http_response_size(resp)
+
+        filepath = join_within_directory(
+            location, _get_http_response_filename(resp, link)
+        )
+        with open(filepath, "wb") as content_file:
+            download = _FileDownload(link, content_file, download_size)
+            self._process_response(download, resp)
+            if download.is_incomplete():
+                self._attempt_resumes_or_redownloads(download, resp)
+
+        content_type = resp.headers.get("Content-Type", "")
+        return filepath, content_type
+
+    def _process_response(self, download: _FileDownload, resp: Response) -> None:
+        """Download and save chunks from a response."""
+        chunks = _log_download(
+            resp,
+            download.link,
+            self._progress_bar,
+            download.size,
+            range_start=download.bytes_received,
+        )
+        try:
+            for chunk in chunks:
+                download.write_chunk(chunk)
+        except (ReadTimeoutError, ProtocolError) as e:
+            # If the download size is not known, then give up downloading the file.
+            if download.size is None:
+                raise e
+
+            logger.warning("Connection interrupted while downloading.")
+
+    def _attempt_resumes_or_redownloads(
+        self, download: _FileDownload, first_resp: Response
+    ) -> None:
+        """Attempt to resume/restart the download if connection was dropped."""
+
+        while download.reattempts < self._resume_retries and download.is_incomplete():
+            assert download.size is not None
+            download.reattempts += 1
+            logger.warning(
+                "Attempting to resume incomplete download (%s/%s, attempt %d)",
+                format_size(download.bytes_received),
+                format_size(download.size),
+                download.reattempts,
+            )
+
+            try:
+                resume_resp = self._http_get_resume(download, should_match=first_resp)
+                # Fallback: if the server responded with 200 (i.e., the file has
+                # since been modified or range requests are unsupported) or any
+                # other unexpected status, restart the download from the beginning.
+                must_restart = resume_resp.status_code != HTTPStatus.PARTIAL_CONTENT
+                if must_restart:
+                    download.reset_file()
+                    download.size = _get_http_response_size(resume_resp)
+                    first_resp = resume_resp
+                else:
+                    # If the resume request starts at the wrong location, fail
+                    # outright since the server is misbehaving.
+                    content_range = resume_resp.headers.get("Content-Range", "")
+                    resumed_at = content_range.lower().partition("bytes ")[2]
+                    resumed_at = resumed_at.partition("-")[0]
+                    if resumed_at and resumed_at != str(download.bytes_received):
+                        raise IncompleteDownloadError(download)
+
+                self._process_response(download, resume_resp)
+            except (
+                ConnectionFailedError,
+                ConnectionTimeoutError,
+                ProxyConnectionError,
+                SSLVerificationError,
+                ReadTimeoutError,
+                ProtocolError,
+                OSError,
+            ):
+                # The error handling here is tricky, a few notes:
+                #
+                # - The diagnostic connection errors are raised by our custom
+                #   requests.request() connection exception handler.
+                # - ProtocolError is raised by urllib3 when the returned data length
+                #   doesn't match the response Content-Length.
+                # - ReadTimeoutError / ProtocolError come straight from urllib3 (via
+                #   process_response) and aren't caught by our connection exception
+                #   handler since they occur while *streaming* a response.
+                continue
+
+        # No more resume attempts. Raise an error if the download is still incomplete.
+        if download.is_incomplete():
+            os.remove(download.output_file.name)
+            raise IncompleteDownloadError(download)
+
+        # If we successfully completed the download via resume, manually cache it
+        # as a complete response to enable future caching
+        if download.reattempts > 0:
+            self._cache_resumed_download(download, first_resp)
+
+    def _cache_resumed_download(
+        self, download: _FileDownload, original_response: Response
+    ) -> None:
+        """
+        Manually cache a file that was successfully downloaded via resume retries.
+
+        cachecontrol doesn't cache 206 (Partial Content) responses, since they
+        are not complete files. This method manually adds the final file to the
+        cache as though it was downloaded in a single request, so that future
+        requests can use the cache.
+        """
+        url = download.link.url_without_fragment
+        adapter = self._session.get_adapter(url)
+
+        # Check if the adapter is the CacheControlAdapter (i.e. caching is enabled)
+        if not isinstance(adapter, CacheControlAdapter):
+            logger.debug(
+                "Skipping resume download caching: no cache controller for %s", url
+            )
+            return
+
+        # Check SafeFileCache is being used
+        assert isinstance(
+            adapter.cache, SafeFileCache
+        ), "separate body cache not in use!"
+
+        synthetic_request = PreparedRequest()
+        synthetic_request.prepare(method="GET", url=url, headers={})
+
+        synthetic_response_headers = HTTPHeaderDict()
+        for key, value in original_response.headers.items():
+            if key.lower() not in ["content-range", "content-length"]:
+                synthetic_response_headers[key] = value
+        synthetic_response_headers["content-length"] = str(download.size)
+
+        synthetic_response = URLlib3Response(
+            body="",
+            headers=synthetic_response_headers,
+            status=200,
+            preload_content=False,
         )
 
-        cmdoptions.add_target_python_options(self.cmd_opts)
+        # Save metadata and then stream the file contents to cache.
+        cache_url = adapter.controller.cache_url(url)
+        metadata_blob = adapter.controller.serializer.dumps(
+            synthetic_request, synthetic_response, b""
+        )
+        adapter.cache.set(cache_url, metadata_blob)
+        download.output_file.flush()
+        with open(download.output_file.name, "rb") as f:
+            adapter.cache.set_body_from_io(cache_url, f)
 
-        index_opts = cmdoptions.make_option_group(
-            cmdoptions.index_group,
-            self.parser,
+        logger.debug(
+            "Cached resumed download as complete response for future use: %s", url
         )
 
-        selection_opts = cmdoptions.make_option_group(
-            cmdoptions.package_selection_group,
-            self.parser,
-        )
+    def _http_get_resume(
+        self, download: _FileDownload, should_match: Response
+    ) -> Response:
+        """Issue a HTTP range request to resume the download."""
+        # To better understand the download resumption logic, see the mdn web docs:
+        # https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Range_requests
+        headers = HEADERS.copy()
+        headers["Range"] = f"bytes={download.bytes_received}-"
+        # If possible, use a conditional range request to avoid corrupted
+        # downloads caused by the remote file changing in-between.
+        if identifier := _get_http_response_etag_or_last_modified(should_match):
+            headers["If-Range"] = identifier
+        return self._http_get(download.link, headers)
 
-        self.parser.insert_option_group(0, index_opts)
-        self.parser.insert_option_group(0, selection_opts)
-        self.parser.insert_option_group(0, self.cmd_opts)
-
-    @with_cleanup
-    def run(self, options: Values, args: list[str]) -> int:
-        options.ignore_installed = True
-        # editable doesn't really make sense for `pip download`, but the bowels
-        # of the RequirementSet code require that property.
-        options.editables = []
-
-        cmdoptions.check_dist_restriction(options)
-        cmdoptions.check_build_constraints(options)
-        cmdoptions.check_release_control_exclusive(options)
-        cmdoptions.check_only_deps_option_does_not_conflict(options)
-
-        options.download_dir = normalize_path(options.download_dir)
-        ensure_dir(options.download_dir)
-
-        session = self.get_default_session(options)
-
-        target_python = make_target_python(options)
-        finder = self._build_package_finder(
-            options=options,
-            session=session,
-            target_python=target_python,
-            ignore_requires_python=options.ignore_requires_python,
-        )
-
-        build_tracker = self.enter_context(get_build_tracker())
-
-        directory = TempDirectory(
-            delete=not options.no_clean,
-            kind="download",
-            globally_managed=True,
-        )
-
-        reqs = self.get_requirements(args, options, finder, session)
-
-        preparer = self.make_requirement_preparer(
-            temp_build_dir=directory,
-            options=options,
-            build_tracker=build_tracker,
-            session=session,
-            finder=finder,
-            download_dir=options.download_dir,
-            use_user_site=False,
-            verbosity=self.verbosity,
-            allow_editables=False,
-        )
-
-        resolver = self.make_resolver(
-            preparer=preparer,
-            finder=finder,
-            options=options,
-            ignore_requires_python=options.ignore_requires_python,
-            py_version_info=options.python_version,
-        )
-
-        self.trace_basic_info(finder)
-
-        requirement_set = resolver.resolve(reqs, check_supported_wheels=True)
-
-        preparer.prepare_linked_requirements_more(requirement_set.requirements.values())
-
-        downloaded: list[str] = []
-        for req in requirement_set.requirements.values():
-            if req.satisfied_by is None:
-                assert req.name is not None
-                preparer.save_linked_requirement(req)
-                downloaded.append(req.name)
-
-        if downloaded:
-            write_output("Successfully downloaded %s", " ".join(downloaded))
-
-        return SUCCESS
+    def _http_get(self, link: Link, headers: Mapping[str, str] = HEADERS) -> Response:
+        target_url = link.url_without_fragment
+        try:
+            resp = self._session.get(target_url, headers=headers, stream=True)
+            raise_for_status(resp)
+        except NetworkConnectionError as e:
+            assert e.response is not None
+            logger.critical(
+                "HTTP error %s while getting %s", e.response.status_code, link
+            )
+            raise
+        return resp
