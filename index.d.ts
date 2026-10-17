@@ -1,5 +1,3 @@
-declare function getProto<O extends object>(object: O): object | null;
+declare function hasNativeSymbols(): boolean;
 
-declare const x: typeof getProto | null;
-
-export = x;
+export = hasNativeSymbols;

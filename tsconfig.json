@@ -1,9 +1,10 @@
 {
 	"extends": "@ljharb/tsconfig",
 	"compilerOptions": {
-		//"target": "es2021",
+		"target": "ES2021",
+		"maxNodeModuleJsDepth": 0,
 	},
 	"exclude": [
-		"coverage",
-	],
+		"coverage"
+	]
 }

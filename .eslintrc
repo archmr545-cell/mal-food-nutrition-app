@@ -4,7 +4,8 @@
 	"extends": "@ljharb",
 
 	"rules": {
-		"id-length": "off",
-		"sort-keys": "off",
-	},
+		"max-statements-per-line": [2, { "max": 2 }],
+		"no-magic-numbers": 0,
+		"multiline-comment-style": 0,
+	}
 }
