@@ -1,48 +1,57 @@
-class UnpackException(Exception):
-    """Base class for some exceptions raised while unpacking.
+from __future__ import annotations
 
-    NOTE: unpack may raise exception other than subclass of
-    UnpackException.  If you want to catch all error, catch
-    Exception instead.
+from typing import TYPE_CHECKING, Collection, Generic
+
+from ..structs import CT, RT, RequirementInformation
+
+if TYPE_CHECKING:
+    from .criterion import Criterion
+
+
+class ResolverException(Exception):
+    """A base class for all exceptions raised by this module.
+
+    Exceptions derived by this class should all be handled in this module. Any
+    bubbling pass the resolver should be treated as a bug.
     """
 
 
-class BufferFull(UnpackException):
+class RequirementsConflicted(ResolverException, Generic[RT, CT]):
+    def __init__(self, criterion: Criterion[RT, CT]) -> None:
+        super().__init__(criterion)
+        self.criterion = criterion
+
+    def __str__(self) -> str:
+        return "Requirements conflict: {}".format(
+            ", ".join(repr(r) for r in self.criterion.iter_requirement()),
+        )
+
+
+class InconsistentCandidate(ResolverException, Generic[RT, CT]):
+    def __init__(self, candidate: CT, criterion: Criterion[RT, CT]):
+        super().__init__(candidate, criterion)
+        self.candidate = candidate
+        self.criterion = criterion
+
+    def __str__(self) -> str:
+        return "Provided candidate {!r} does not satisfy {}".format(
+            self.candidate,
+            ", ".join(repr(r) for r in self.criterion.iter_requirement()),
+        )
+
+
+class ResolutionError(ResolverException):
     pass
 
 
-class OutOfData(UnpackException):
-    pass
+class ResolutionImpossible(ResolutionError, Generic[RT, CT]):
+    def __init__(self, causes: Collection[RequirementInformation[RT, CT]]):
+        super().__init__(causes)
+        # causes is a list of RequirementInformation objects
+        self.causes = causes
 
 
-class FormatError(ValueError, UnpackException):
-    """Invalid msgpack format"""
-
-
-class StackError(ValueError, UnpackException):
-    """Too nested"""
-
-
-# Deprecated.  Use ValueError instead
-UnpackValueError = ValueError
-
-
-class ExtraData(UnpackValueError):
-    """ExtraData is raised when there is trailing data.
-
-    This exception is raised while only one-shot (not streaming)
-    unpack.
-    """
-
-    def __init__(self, unpacked, extra):
-        self.unpacked = unpacked
-        self.extra = extra
-
-    def __str__(self):
-        return "unpack(b) received extra data."
-
-
-# Deprecated.  Use Exception instead to catch all exception during packing.
-PackException = Exception
-PackValueError = ValueError
-PackOverflowError = OverflowError
+class ResolutionTooDeep(ResolutionError):
+    def __init__(self, round_count: int) -> None:
+        super().__init__(round_count)
+        self.round_count = round_count

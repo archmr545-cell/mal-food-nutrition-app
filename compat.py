@@ -1,41 +1,96 @@
-from typing import Any, Union
+"""
+requests.compat
+~~~~~~~~~~~~~~~
 
-from .core import decode, encode
+This module previously handled import compatibility issues
+between Python 2 and Python 3. It remains for backwards
+compatibility until the next major version.
+"""
+
+# pyright: reportUnusedImport=false
+
+from __future__ import annotations
+
+import sys
+
+# -------
+# urllib3
+# -------
+from pip._vendor.urllib3 import (
+    __version__ as urllib3_version,  # type: ignore[reportPrivateImportUsage]
+)
+
+# Detect which major version of urllib3 is being used.
+try:
+    is_urllib3_1 = int(urllib3_version.split(".")[0]) == 1
+except (TypeError, AttributeError):
+    # If we can't discern a version, prefer old functionality.
+    is_urllib3_1 = True
+
+# -------------------
+# Character Detection
+# -------------------
 
 
-def ToASCII(label: str) -> bytes:
-    """Compatibility shim for :rfc:`3490` ``ToASCII``.
-
-    Delegates to :func:`idna.encode` (IDNA 2008). Provided to ease porting
-    of code written against the legacy :mod:`encodings.idna` API; new code
-    should call :func:`idna.encode` directly.
-
-    :param label: The label or domain to encode.
-    :returns: The encoded form as ASCII :class:`bytes`.
-    """
-    return encode(label)
+def _resolve_char_detection() -> None:
+    """Find supported character detection libraries."""
+    chardet = None
+    return chardet
 
 
-def ToUnicode(label: Union[bytes, bytearray]) -> str:
-    """Compatibility shim for :rfc:`3490` ``ToUnicode``.
+chardet = _resolve_char_detection()
 
-    Delegates to :func:`idna.decode` (IDNA 2008). Provided to ease porting
-    of code written against the legacy :mod:`encodings.idna` API; new code
-    should call :func:`idna.decode` directly.
+# -------
+# Pythons
+# -------
 
-    :param label: The label or domain to decode.
-    :returns: The decoded Unicode form.
-    """
-    return decode(label)
+# Syntax sugar.
+_ver = sys.version_info
 
+#: Python 2.x?
+is_py2 = _ver[0] == 2
 
-def nameprep(s: Any) -> None:
-    """Stub for :rfc:`3491` Nameprep, which is not used by IDNA 2008.
+#: Python 3.x?
+is_py3 = _ver[0] == 3
 
-    IDNA 2008 (:rfc:`5891`) replaces Nameprep with the per-codepoint
-    validity classes from :rfc:`5892`; this function exists only to
-    return a clear error if legacy code attempts to call it.
+# Note: We've patched out simplejson support in pip because it prevents
+#       upgrading simplejson on Windows.
+import json
+from json import JSONDecodeError
 
-    :raises NotImplementedError: Always.
-    """
-    raise NotImplementedError("IDNA 2008 does not utilise nameprep protocol")
+# Keep OrderedDict for backwards compatibility.
+from collections import OrderedDict
+from collections.abc import Callable, Mapping, MutableMapping
+from http import cookiejar as cookielib
+from http.cookies import Morsel
+from io import StringIO
+
+# --------------
+# Legacy Imports
+# --------------
+from urllib.parse import (
+    quote,
+    quote_plus,
+    unquote,
+    unquote_plus,
+    urldefrag,
+    urlencode,
+    urljoin,
+    urlparse,
+    urlsplit,
+    urlunparse,
+)
+from urllib.request import (
+    getproxies,
+    getproxies_environment,
+    parse_http_list,
+    proxy_bypass,
+    proxy_bypass_environment,  # type: ignore[attr-defined]  # https://github.com/python/cpython/issues/145331
+)
+
+builtin_str = str
+str = str
+bytes = bytes
+basestring = (str, bytes)
+numeric_types = (int, float)
+integer_types = (int,)
