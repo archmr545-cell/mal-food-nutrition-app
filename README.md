@@ -1,62 +1,163 @@
-# call-bind-apply-helpers <sup>[![Version Badge][npm-version-svg]][package-url]</sup>
+# detect-libc
 
-[![github actions][actions-image]][actions-url]
-[![coverage][codecov-image]][codecov-url]
-[![dependency status][deps-svg]][deps-url]
-[![dev dependency status][dev-deps-svg]][dev-deps-url]
-[![License][license-image]][license-url]
-[![Downloads][downloads-image]][downloads-url]
+Node.js module to detect details of the C standard library (libc)
+implementation provided by a given Linux system.
 
-[![npm badge][npm-badge-png]][package-url]
+Currently supports detection of GNU glibc and MUSL libc.
 
-Helper functions around Function call/apply/bind, for use in `call-bind`.
+Provides asychronous and synchronous functions for the
+family (e.g. `glibc`, `musl`) and version (e.g. `1.23`, `1.2.3`).
 
-The only packages that should likely ever use this package directly are `call-bind` and `get-intrinsic`.
-Please use `call-bind` unless you have a very good reason not to.
+The version numbers of libc implementations
+are not guaranteed to be semver-compliant.
 
-## Getting started
+For previous v1.x releases, please see the
+[v1](https://github.com/lovell/detect-libc/tree/v1) branch.
+
+## Install
 
 ```sh
-npm install --save call-bind-apply-helpers
+npm install detect-libc
 ```
 
-## Usage/Examples
+## API
+
+### GLIBC
+
+```ts
+const GLIBC: string = 'glibc';
+```
+
+A String constant containing the value `glibc`.
+
+### MUSL
+
+```ts
+const MUSL: string = 'musl';
+```
+
+A String constant containing the value `musl`.
+
+### family
+
+```ts
+function family(): Promise<string | null>;
+```
+
+Resolves asychronously with:
+
+* `glibc` or `musl` when the libc family can be determined
+* `null` when the libc family cannot be determined
+* `null` when run on a non-Linux platform
 
 ```js
-const assert = require('assert');
-const callBindBasic = require('call-bind-apply-helpers');
+const { family, GLIBC, MUSL } = require('detect-libc');
 
-function f(a, b) {
-	assert.equal(this, 1);
-	assert.equal(a, 2);
-	assert.equal(b, 3);
-	assert.equal(arguments.length, 2);
+switch (await family()) {
+  case GLIBC: ...
+  case MUSL: ...
+  case null: ...
 }
-
-const fBound = callBindBasic([f, 1]);
-
-delete Function.prototype.call;
-delete Function.prototype.bind;
-
-fBound(2, 3);
 ```
 
-## Tests
+### familySync
 
-Clone the repo, `npm install`, and run `npm test`
+```ts
+function familySync(): string | null;
+```
 
-[package-url]: https://npmjs.org/package/call-bind-apply-helpers
-[npm-version-svg]: https://versionbadg.es/ljharb/call-bind-apply-helpers.svg
-[deps-svg]: https://david-dm.org/ljharb/call-bind-apply-helpers.svg
-[deps-url]: https://david-dm.org/ljharb/call-bind-apply-helpers
-[dev-deps-svg]: https://david-dm.org/ljharb/call-bind-apply-helpers/dev-status.svg
-[dev-deps-url]: https://david-dm.org/ljharb/call-bind-apply-helpers#info=devDependencies
-[npm-badge-png]: https://nodei.co/npm/call-bind-apply-helpers.png?downloads=true&stars=true
-[license-image]: https://img.shields.io/npm/l/call-bind-apply-helpers.svg
-[license-url]: LICENSE
-[downloads-image]: https://img.shields.io/npm/dm/call-bind-apply-helpers.svg
-[downloads-url]: https://npm-stat.com/charts.html?package=call-bind-apply-helpers
-[codecov-image]: https://codecov.io/gh/ljharb/call-bind-apply-helpers/branch/main/graphs/badge.svg
-[codecov-url]: https://app.codecov.io/gh/ljharb/call-bind-apply-helpers/
-[actions-image]: https://img.shields.io/endpoint?url=https://github-actions-badge-u3jn4tfpocch.runkit.sh/ljharb/call-bind-apply-helpers
-[actions-url]: https://github.com/ljharb/call-bind-apply-helpers/actions
+Synchronous version of `family()`.
+
+```js
+const { familySync, GLIBC, MUSL } = require('detect-libc');
+
+switch (familySync()) {
+  case GLIBC: ...
+  case MUSL: ...
+  case null: ...
+}
+```
+
+### version
+
+```ts
+function version(): Promise<string | null>;
+```
+
+Resolves asychronously with:
+
+* The version when it can be determined
+* `null` when the libc family cannot be determined
+* `null` when run on a non-Linux platform
+
+```js
+const { version } = require('detect-libc');
+
+const v = await version();
+if (v) {
+  const [major, minor, patch] = v.split('.');
+}
+```
+
+### versionSync
+
+```ts
+function versionSync(): string | null;
+```
+
+Synchronous version of `version()`.
+
+```js
+const { versionSync } = require('detect-libc');
+
+const v = versionSync();
+if (v) {
+  const [major, minor, patch] = v.split('.');
+}
+```
+
+### isNonGlibcLinux
+
+```ts
+function isNonGlibcLinux(): Promise<boolean>;
+```
+
+Resolves asychronously with:
+
+* `false` when the libc family is `glibc`
+* `true` when the libc family is not `glibc`
+* `false` when run on a non-Linux platform
+
+```js
+const { isNonGlibcLinux } = require('detect-libc');
+
+if (await isNonGlibcLinux()) { ... }
+```
+
+### isNonGlibcLinuxSync
+
+```ts
+function isNonGlibcLinuxSync(): boolean;
+```
+
+Synchronous version of `isNonGlibcLinux()`.
+
+```js
+const { isNonGlibcLinuxSync } = require('detect-libc');
+
+if (isNonGlibcLinuxSync()) { ... }
+```
+
+## Licensing
+
+Copyright 2017 Lovell Fuller and others.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0.html)
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
