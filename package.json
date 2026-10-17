@@ -1,78 +1,47 @@
 {
-  "name": "semver",
-  "version": "7.8.5",
-  "description": "The semantic version parser used by npm.",
-  "main": "index.js",
-  "scripts": {
-    "test": "tap",
-    "snap": "tap",
-    "lint": "npm run eslint",
-    "postlint": "template-oss-check",
-    "lintfix": "npm run eslint -- --fix",
-    "posttest": "npm run lint",
-    "template-oss-apply": "template-oss-apply --force",
-    "eslint": "eslint \"**/*.{js,cjs,ts,mjs,jsx,tsx}\""
+  "name": "simple-concat",
+  "description": "Super-minimalist version of `concat-stream`. Less than 15 lines!",
+  "version": "1.0.1",
+  "author": {
+    "name": "Feross Aboukhadijeh",
+    "email": "feross@feross.org",
+    "url": "https://feross.org"
   },
+  "bugs": {
+    "url": "https://github.com/feross/simple-concat/issues"
+  },
+  "dependencies": {},
   "devDependencies": {
-    "@npmcli/eslint-config": "^7.0.0",
-    "@npmcli/template-oss": "5.0.0",
-    "benchmark": "^2.1.4",
-    "tap": "^16.0.0"
+    "standard": "*",
+    "tape": "^5.0.1"
   },
-  "license": "ISC",
+  "homepage": "https://github.com/feross/simple-concat",
+  "keywords": [
+    "concat",
+    "concat-stream",
+    "concat stream"
+  ],
+  "license": "MIT",
+  "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/npm/node-semver.git"
+    "url": "git://github.com/feross/simple-concat.git"
   },
-  "bin": {
-    "semver": "bin/semver.js"
+  "scripts": {
+    "test": "standard && tape test/*.js"
   },
-  "files": [
-    "bin/",
-    "lib/",
-    "classes/",
-    "functions/",
-    "internal/",
-    "ranges/",
-    "index.js",
-    "preload.js",
-    "range.bnf"
-  ],
-  "tap": {
-    "timeout": 30,
-    "coverage-map": "map.js",
-    "nyc-arg": [
-      "--exclude",
-      "tap-snapshots/**"
-    ]
-  },
-  "engines": {
-    "node": ">=10"
-  },
-  "author": "GitHub Inc.",
-  "templateOSS": {
-    "//@npmcli/template-oss": "This file is partially managed by @npmcli/template-oss. Edits may be overwritten.",
-    "version": "5.0.0",
-    "engines": ">=10",
-    "distPaths": [
-      "classes/",
-      "functions/",
-      "internal/",
-      "ranges/",
-      "index.js",
-      "preload.js",
-      "range.bnf"
-    ],
-    "allowPaths": [
-      "/classes/",
-      "/functions/",
-      "/internal/",
-      "/ranges/",
-      "/index.js",
-      "/preload.js",
-      "/range.bnf",
-      "/benchmarks"
-    ],
-    "publish": "true"
-  }
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/feross"
+    },
+    {
+      "type": "patreon",
+      "url": "https://www.patreon.com/feross"
+    },
+    {
+      "type": "consulting",
+      "url": "https://feross.org/support"
+    }
+  ]
 }
