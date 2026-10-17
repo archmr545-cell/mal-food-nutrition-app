@@ -1,56 +1,38 @@
 'use strict';
 
-var $defineProperty = require('../');
-
 var test = require('tape');
-var gOPD = require('gopd');
 
-test('defineProperty: supported', { skip: !$defineProperty }, function (t) {
-	t.plan(4);
+var $Object = require('../');
+var isObject = require('../isObject');
+var ToObject = require('../ToObject');
+var RequireObjectCoercible = require('..//RequireObjectCoercible');
 
-	t.equal(typeof $defineProperty, 'function', 'defineProperty is supported');
-	if ($defineProperty && gOPD) { // this `if` check is just to shut TS up
-		/** @type {{ a: number, b?: number, c?: number }} */
-		var o = { a: 1 };
+test('errors', function (t) {
+	t.equal($Object, Object);
+	// @ts-expect-error
+	t['throws'](function () { ToObject(null); }, TypeError);
+	// @ts-expect-error
+	t['throws'](function () { ToObject(undefined); }, TypeError);
+	// @ts-expect-error
+	t['throws'](function () { RequireObjectCoercible(null); }, TypeError);
+	// @ts-expect-error
+	t['throws'](function () { RequireObjectCoercible(undefined); }, TypeError);
 
-		$defineProperty(o, 'b', { enumerable: true, value: 2 });
-		t.deepEqual(
-			gOPD(o, 'b'),
-			{
-				configurable: false,
-				enumerable: true,
-				value: 2,
-				writable: false
-			},
-			'property descriptor is as expected'
-		);
+	t.deepEqual(RequireObjectCoercible(true), true);
+	t.deepEqual(ToObject(true), Object(true));
+	t.deepEqual(ToObject(42), Object(42));
+	var f = function () {};
+	t.equal(ToObject(f), f);
 
-		$defineProperty(o, 'c', { enumerable: false, value: 3, writable: true });
-		t.deepEqual(
-			gOPD(o, 'c'),
-			{
-				configurable: false,
-				enumerable: false,
-				value: 3,
-				writable: true
-			},
-			'property descriptor is as expected'
-		);
-	}
+	t.equal(isObject(undefined), false);
+	t.equal(isObject(null), false);
+	t.equal(isObject({}), true);
+	t.equal(isObject([]), true);
+	t.equal(isObject(function () {}), true);
 
-	t.equal($defineProperty, Object.defineProperty, 'defineProperty is Object.defineProperty');
-
-	t.end();
-});
-
-test('defineProperty: not supported', { skip: !!$defineProperty }, function (t) {
-	t.notOk($defineProperty, 'defineProperty is not supported');
-
-	t.match(
-		typeof $defineProperty,
-		/^(?:undefined|boolean)$/,
-		'`typeof defineProperty` is `undefined` or `boolean`'
-	);
+	var obj = {};
+	t.equal(RequireObjectCoercible(obj), obj);
+	t.equal(ToObject(obj), obj);
 
 	t.end();
 });
