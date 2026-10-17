@@ -1,3 +1,2 @@
-declare const Object: ObjectConstructor;
-
-export = Object;
+declare function fileUriToPath(uri: string): string;
+export = fileUriToPath;
