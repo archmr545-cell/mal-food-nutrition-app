@@ -1,294 +1,192 @@
-/**
- * lodash (Custom Build) <https://lodash.com/>
- * Build: `lodash modularize exports="npm" -o ./`
- * Copyright jQuery Foundation and other contributors <https://jquery.org/>
- * Released under MIT license <https://lodash.com/license>
- * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
- * Copyright Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- */
+'use strict';
 
-/** Used as the `TypeError` message for "Functions" methods. */
-var FUNC_ERROR_TEXT = 'Expected a function';
+var test = require('tape');
+var v = require('es-value-fixtures');
+var forEach = require('for-each');
+var inspect = require('object-inspect');
 
-/** Used as references for various `Number` constants. */
-var INFINITY = 1 / 0,
-    MAX_INTEGER = 1.7976931348623157e+308,
-    NAN = 0 / 0;
+var abs = require('../abs');
+var floor = require('../floor');
+var isFinite = require('../isFinite');
+var isInteger = require('../isInteger');
+var isNaN = require('../isNaN');
+var isNegativeZero = require('../isNegativeZero');
+var max = require('../max');
+var min = require('../min');
+var mod = require('../mod');
+var pow = require('../pow');
+var round = require('../round');
+var sign = require('../sign');
 
-/** `Object#toString` result references. */
-var symbolTag = '[object Symbol]';
+var maxArrayLength = require('../constants/maxArrayLength');
+var maxSafeInteger = require('../constants/maxSafeInteger');
+var maxValue = require('../constants/maxValue');
 
-/** Used to match leading and trailing whitespace. */
-var reTrim = /^\s+|\s+$/g;
+test('abs', function (t) {
+	t.equal(abs(-1), 1, 'abs(-1) === 1');
+	t.equal(abs(+1), 1, 'abs(+1) === 1');
+	t.equal(abs(+0), +0, 'abs(+0) === +0');
+	t.equal(abs(-0), +0, 'abs(-0) === +0');
 
-/** Used to detect bad signed hexadecimal string values. */
-var reIsBadHex = /^[-+]0x[0-9a-f]+$/i;
+	t.end();
+});
 
-/** Used to detect binary string values. */
-var reIsBinary = /^0b[01]+$/i;
+test('floor', function (t) {
+	t.equal(floor(-1.1), -2, 'floor(-1.1) === -2');
+	t.equal(floor(+1.1), 1, 'floor(+1.1) === 1');
+	t.equal(floor(+0), +0, 'floor(+0) === +0');
+	t.equal(floor(-0), -0, 'floor(-0) === -0');
+	t.equal(floor(-Infinity), -Infinity, 'floor(-Infinity) === -Infinity');
+	t.equal(floor(Number(Infinity)), Number(Infinity), 'floor(+Infinity) === +Infinity');
+	t.equal(floor(NaN), NaN, 'floor(NaN) === NaN');
+	t.equal(floor(0), +0, 'floor(0) === +0');
+	t.equal(floor(-0), -0, 'floor(-0) === -0');
+	t.equal(floor(1), 1, 'floor(1) === 1');
+	t.equal(floor(-1), -1, 'floor(-1) === -1');
+	t.equal(floor(1.1), 1, 'floor(1.1) === 1');
+	t.equal(floor(-1.1), -2, 'floor(-1.1) === -2');
+	t.equal(floor(maxValue), maxValue, 'floor(maxValue) === maxValue');
+	t.equal(floor(maxSafeInteger), maxSafeInteger, 'floor(maxSafeInteger) === maxSafeInteger');
 
-/** Used to detect octal string values. */
-var reIsOctal = /^0o[0-7]+$/i;
+	t.end();
+});
 
-/** Built-in method references without a dependency on `root`. */
-var freeParseInt = parseInt;
+test('isFinite', function (t) {
+	t.equal(isFinite(0), true, 'isFinite(+0) === true');
+	t.equal(isFinite(-0), true, 'isFinite(-0) === true');
+	t.equal(isFinite(1), true, 'isFinite(1) === true');
+	t.equal(isFinite(Infinity), false, 'isFinite(Infinity) === false');
+	t.equal(isFinite(-Infinity), false, 'isFinite(-Infinity) === false');
+	t.equal(isFinite(NaN), false, 'isFinite(NaN) === false');
 
-/** Used for built-in method references. */
-var objectProto = Object.prototype;
+	forEach(v.nonNumbers, function (nonNumber) {
+		t.equal(isFinite(nonNumber), false, 'isFinite(' + inspect(nonNumber) + ') === false');
+	});
 
-/**
- * Used to resolve the
- * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
- * of values.
- */
-var objectToString = objectProto.toString;
+	t.end();
+});
 
-/**
- * Creates a function that invokes `func`, with the `this` binding and arguments
- * of the created function, while it's called less than `n` times. Subsequent
- * calls to the created function return the result of the last `func` invocation.
- *
- * @static
- * @memberOf _
- * @since 3.0.0
- * @category Function
- * @param {number} n The number of calls at which `func` is no longer invoked.
- * @param {Function} func The function to restrict.
- * @returns {Function} Returns the new restricted function.
- * @example
- *
- * jQuery(element).on('click', _.before(5, addContactToList));
- * // => Allows adding up to 4 contacts to the list.
- */
-function before(n, func) {
-  var result;
-  if (typeof func != 'function') {
-    throw new TypeError(FUNC_ERROR_TEXT);
-  }
-  n = toInteger(n);
-  return function() {
-    if (--n > 0) {
-      result = func.apply(this, arguments);
-    }
-    if (n <= 1) {
-      func = undefined;
-    }
-    return result;
-  };
-}
+test('isInteger', function (t) {
+	forEach([].concat(
+		// @ts-expect-error TS sucks with concat
+		v.nonNumbers,
+		v.nonIntegerNumbers
+	), function (nonInteger) {
+		t.equal(isInteger(nonInteger), false, 'isInteger(' + inspect(nonInteger) + ') === false');
+	});
 
-/**
- * Creates a function that is restricted to invoking `func` once. Repeat calls
- * to the function return the value of the first invocation. The `func` is
- * invoked with the `this` binding and arguments of the created function.
- *
- * @static
- * @memberOf _
- * @since 0.1.0
- * @category Function
- * @param {Function} func The function to restrict.
- * @returns {Function} Returns the new restricted function.
- * @example
- *
- * var initialize = _.once(createApplication);
- * initialize();
- * initialize();
- * // => `createApplication` is invoked once
- */
-function once(func) {
-  return before(2, func);
-}
+	t.end();
+});
 
-/**
- * Checks if `value` is the
- * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
- * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
- *
- * @static
- * @memberOf _
- * @since 0.1.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is an object, else `false`.
- * @example
- *
- * _.isObject({});
- * // => true
- *
- * _.isObject([1, 2, 3]);
- * // => true
- *
- * _.isObject(_.noop);
- * // => true
- *
- * _.isObject(null);
- * // => false
- */
-function isObject(value) {
-  var type = typeof value;
-  return !!value && (type == 'object' || type == 'function');
-}
+test('isNaN', function (t) {
+	forEach([].concat(
+		// @ts-expect-error TS sucks with concat
+		v.nonNumbers,
+		v.infinities,
+		v.zeroes,
+		v.integerNumbers
+	), function (nonNaN) {
+		t.equal(isNaN(nonNaN), false, 'isNaN(' + inspect(nonNaN) + ') === false');
+	});
 
-/**
- * Checks if `value` is object-like. A value is object-like if it's not `null`
- * and has a `typeof` result of "object".
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
- * @example
- *
- * _.isObjectLike({});
- * // => true
- *
- * _.isObjectLike([1, 2, 3]);
- * // => true
- *
- * _.isObjectLike(_.noop);
- * // => false
- *
- * _.isObjectLike(null);
- * // => false
- */
-function isObjectLike(value) {
-  return !!value && typeof value == 'object';
-}
+	t.equal(isNaN(NaN), true, 'isNaN(NaN) === true');
 
-/**
- * Checks if `value` is classified as a `Symbol` primitive or object.
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
- * @example
- *
- * _.isSymbol(Symbol.iterator);
- * // => true
- *
- * _.isSymbol('abc');
- * // => false
- */
-function isSymbol(value) {
-  return typeof value == 'symbol' ||
-    (isObjectLike(value) && objectToString.call(value) == symbolTag);
-}
+	t.end();
+});
 
-/**
- * Converts `value` to a finite number.
- *
- * @static
- * @memberOf _
- * @since 4.12.0
- * @category Lang
- * @param {*} value The value to convert.
- * @returns {number} Returns the converted number.
- * @example
- *
- * _.toFinite(3.2);
- * // => 3.2
- *
- * _.toFinite(Number.MIN_VALUE);
- * // => 5e-324
- *
- * _.toFinite(Infinity);
- * // => 1.7976931348623157e+308
- *
- * _.toFinite('3.2');
- * // => 3.2
- */
-function toFinite(value) {
-  if (!value) {
-    return value === 0 ? value : 0;
-  }
-  value = toNumber(value);
-  if (value === INFINITY || value === -INFINITY) {
-    var sign = (value < 0 ? -1 : 1);
-    return sign * MAX_INTEGER;
-  }
-  return value === value ? value : 0;
-}
+test('isNegativeZero', function (t) {
+	t.equal(isNegativeZero(-0), true, 'isNegativeZero(-0) === true');
+	t.equal(isNegativeZero(+0), false, 'isNegativeZero(+0) === false');
+	t.equal(isNegativeZero(1), false, 'isNegativeZero(1) === false');
+	t.equal(isNegativeZero(-1), false, 'isNegativeZero(-1) === false');
+	t.equal(isNegativeZero(NaN), false, 'isNegativeZero(NaN) === false');
+	t.equal(isNegativeZero(Infinity), false, 'isNegativeZero(Infinity) === false');
+	t.equal(isNegativeZero(-Infinity), false, 'isNegativeZero(-Infinity) === false');
 
-/**
- * Converts `value` to an integer.
- *
- * **Note:** This method is loosely based on
- * [`ToInteger`](http://www.ecma-international.org/ecma-262/7.0/#sec-tointeger).
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to convert.
- * @returns {number} Returns the converted integer.
- * @example
- *
- * _.toInteger(3.2);
- * // => 3
- *
- * _.toInteger(Number.MIN_VALUE);
- * // => 0
- *
- * _.toInteger(Infinity);
- * // => 1.7976931348623157e+308
- *
- * _.toInteger('3.2');
- * // => 3
- */
-function toInteger(value) {
-  var result = toFinite(value),
-      remainder = result % 1;
+	forEach(v.nonNumbers, function (nonNumber) {
+		t.equal(isNegativeZero(nonNumber), false, 'isNegativeZero(' + inspect(nonNumber) + ') === false');
+	});
 
-  return result === result ? (remainder ? result - remainder : result) : 0;
-}
+	t.end();
+});
 
-/**
- * Converts `value` to a number.
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to process.
- * @returns {number} Returns the number.
- * @example
- *
- * _.toNumber(3.2);
- * // => 3.2
- *
- * _.toNumber(Number.MIN_VALUE);
- * // => 5e-324
- *
- * _.toNumber(Infinity);
- * // => Infinity
- *
- * _.toNumber('3.2');
- * // => 3.2
- */
-function toNumber(value) {
-  if (typeof value == 'number') {
-    return value;
-  }
-  if (isSymbol(value)) {
-    return NAN;
-  }
-  if (isObject(value)) {
-    var other = typeof value.valueOf == 'function' ? value.valueOf() : value;
-    value = isObject(other) ? (other + '') : other;
-  }
-  if (typeof value != 'string') {
-    return value === 0 ? value : +value;
-  }
-  value = value.replace(reTrim, '');
-  var isBinary = reIsBinary.test(value);
-  return (isBinary || reIsOctal.test(value))
-    ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
-    : (reIsBadHex.test(value) ? NAN : +value);
-}
+test('max', function (t) {
+	t.equal(max(1, 2), 2, 'max(1, 2) === 2');
+	t.equal(max(1, 2, 3), 3, 'max(1, 2, 3) === 3');
+	t.equal(max(1, 2, 3, 4), 4, 'max(1, 2, 3, 4) === 4');
+	t.equal(max(1, 2, 3, 4, 5), 5, 'max(1, 2, 3, 4, 5) === 5');
+	t.equal(max(1, 2, 3, 4, 5, 6), 6, 'max(1, 2, 3, 4, 5, 6) === 6');
+	t.equal(max(1, 2, 3, 4, 5, 6, 7), 7, 'max(1, 2, 3, 4, 5, 6, 7) === 7');
 
-module.exports = once;
+	t.end();
+});
+
+test('min', function (t) {
+	t.equal(min(1, 2), 1, 'min(1, 2) === 1');
+	t.equal(min(1, 2, 3), 1, 'min(1, 2, 3) === 1');
+	t.equal(min(1, 2, 3, 4), 1, 'min(1, 2, 3, 4) === 1');
+	t.equal(min(1, 2, 3, 4, 5), 1, 'min(1, 2, 3, 4, 5) === 1');
+	t.equal(min(1, 2, 3, 4, 5, 6), 1, 'min(1, 2, 3, 4, 5, 6) === 1');
+
+	t.end();
+});
+
+test('mod', function (t) {
+	t.equal(mod(1, 2), 1, 'mod(1, 2) === 1');
+	t.equal(mod(2, 2), 0, 'mod(2, 2) === 0');
+	t.equal(mod(3, 2), 1, 'mod(3, 2) === 1');
+	t.equal(mod(4, 2), 0, 'mod(4, 2) === 0');
+	t.equal(mod(5, 2), 1, 'mod(5, 2) === 1');
+	t.equal(mod(6, 2), 0, 'mod(6, 2) === 0');
+	t.equal(mod(7, 2), 1, 'mod(7, 2) === 1');
+	t.equal(mod(8, 2), 0, 'mod(8, 2) === 0');
+	t.equal(mod(9, 2), 1, 'mod(9, 2) === 1');
+	t.equal(mod(10, 2), 0, 'mod(10, 2) === 0');
+	t.equal(mod(11, 2), 1, 'mod(11, 2) === 1');
+
+	t.end();
+});
+
+test('pow', function (t) {
+	t.equal(pow(2, 2), 4, 'pow(2, 2) === 4');
+	t.equal(pow(2, 3), 8, 'pow(2, 3) === 8');
+	t.equal(pow(2, 4), 16, 'pow(2, 4) === 16');
+	t.equal(pow(2, 5), 32, 'pow(2, 5) === 32');
+	t.equal(pow(2, 6), 64, 'pow(2, 6) === 64');
+	t.equal(pow(2, 7), 128, 'pow(2, 7) === 128');
+	t.equal(pow(2, 8), 256, 'pow(2, 8) === 256');
+	t.equal(pow(2, 9), 512, 'pow(2, 9) === 512');
+	t.equal(pow(2, 10), 1024, 'pow(2, 10) === 1024');
+
+	t.end();
+});
+
+test('round', function (t) {
+	t.equal(round(1.1), 1, 'round(1.1) === 1');
+	t.equal(round(1.5), 2, 'round(1.5) === 2');
+	t.equal(round(1.9), 2, 'round(1.9) === 2');
+
+	t.end();
+});
+
+test('sign', function (t) {
+	t.equal(sign(-1), -1, 'sign(-1) === -1');
+	t.equal(sign(+1), +1, 'sign(+1) === +1');
+	t.equal(sign(+0), +0, 'sign(+0) === +0');
+	t.equal(sign(-0), -0, 'sign(-0) === -0');
+	t.equal(sign(NaN), NaN, 'sign(NaN) === NaN');
+	t.equal(sign(Infinity), +1, 'sign(Infinity) === +1');
+	t.equal(sign(-Infinity), -1, 'sign(-Infinity) === -1');
+	t.equal(sign(maxValue), +1, 'sign(maxValue) === +1');
+	t.equal(sign(maxSafeInteger), +1, 'sign(maxSafeInteger) === +1');
+
+	t.end();
+});
+
+test('constants', function (t) {
+	t.equal(typeof maxArrayLength, 'number', 'typeof maxArrayLength === "number"');
+	t.equal(typeof maxSafeInteger, 'number', 'typeof maxSafeInteger === "number"');
+	t.equal(typeof maxValue, 'number', 'typeof maxValue === "number"');
+
+	t.end();
+});
