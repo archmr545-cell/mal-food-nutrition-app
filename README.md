@@ -1,74 +1,46 @@
-file-uri-to-path
-================
-### Convert a `file:` URI to a file path
-[![Build Status](https://travis-ci.org/TooTallNate/file-uri-to-path.svg?branch=master)](https://travis-ci.org/TooTallNate/file-uri-to-path)
+# function-bind <sup>[![Version Badge][npm-version-svg]][package-url]</sup>
 
-Accepts a `file:` URI and returns a regular file path suitable for use with the
-`fs` module functions.
+[![github actions][actions-image]][actions-url]
+<!--[![coverage][codecov-image]][codecov-url]-->
+[![dependency status][deps-svg]][deps-url]
+[![dev dependency status][dev-deps-svg]][dev-deps-url]
+[![License][license-image]][license-url]
+[![Downloads][downloads-image]][downloads-url]
 
+[![npm badge][npm-badge-png]][package-url]
 
-Installation
-------------
+Implementation of function.prototype.bind
 
-Install with `npm`:
+Old versions of phantomjs, Internet Explorer < 9, and node < 0.6 don't support `Function.prototype.bind`.
 
-``` bash
-$ npm install file-uri-to-path
+## Example
+
+```js
+Function.prototype.bind = require("function-bind")
 ```
 
+## Installation
 
-Example
--------
+`npm install function-bind`
 
-``` js
-var uri2path = require('file-uri-to-path');
+## Contributors
 
-uri2path('file://localhost/c|/WINDOWS/clock.avi');
-// "c:\\WINDOWS\\clock.avi"
+ - Raynos
 
-uri2path('file:///c|/WINDOWS/clock.avi');
-// "c:\\WINDOWS\\clock.avi"
+## MIT Licenced
 
-uri2path('file://localhost/c:/WINDOWS/clock.avi');
-// "c:\\WINDOWS\\clock.avi"
-
-uri2path('file://hostname/path/to/the%20file.txt');
-// "\\\\hostname\\path\\to\\the file.txt"
-
-uri2path('file:///c:/path/to/the%20file.txt');
-// "c:\\path\\to\\the file.txt"
-```
-
-
-API
----
-
-### fileUriToPath(String uri) → String
-
-
-
-License
--------
-
-(The MIT License)
-
-Copyright (c) 2014 Nathan Rajlich &lt;nathan@tootallnate.net&gt;
-
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of this software and associated documentation files (the
-'Software'), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+[package-url]: https://npmjs.org/package/function-bind
+[npm-version-svg]: https://versionbadg.es/Raynos/function-bind.svg
+[deps-svg]: https://david-dm.org/Raynos/function-bind.svg
+[deps-url]: https://david-dm.org/Raynos/function-bind
+[dev-deps-svg]: https://david-dm.org/Raynos/function-bind/dev-status.svg
+[dev-deps-url]: https://david-dm.org/Raynos/function-bind#info=devDependencies
+[npm-badge-png]: https://nodei.co/npm/function-bind.png?downloads=true&stars=true
+[license-image]: https://img.shields.io/npm/l/function-bind.svg
+[license-url]: LICENSE
+[downloads-image]: https://img.shields.io/npm/dm/function-bind.svg
+[downloads-url]: https://npm-stat.com/charts.html?package=function-bind
+[codecov-image]: https://codecov.io/gh/Raynos/function-bind/branch/main/graphs/badge.svg
+[codecov-url]: https://app.codecov.io/gh/Raynos/function-bind/
+[actions-image]: https://img.shields.io/endpoint?url=https://github-actions-badge-u3jn4tfpocch.runkit.sh/Raynos/function-bind
+[actions-url]: https://github.com/Raynos/function-bind/actions
