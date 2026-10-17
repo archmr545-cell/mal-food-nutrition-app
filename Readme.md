@@ -1,224 +1,156 @@
-# Path-to-RegExp
+# safer-buffer [![travis][travis-image]][travis-url] [![npm][npm-image]][npm-url] [![javascript style guide][standard-image]][standard-url] [![Security Responsible Disclosure][secuirty-image]][secuirty-url]
 
-> Turn a path string such as `/user/:name` into a regular expression.
+[travis-image]: https://travis-ci.org/ChALkeR/safer-buffer.svg?branch=master
+[travis-url]: https://travis-ci.org/ChALkeR/safer-buffer
+[npm-image]: https://img.shields.io/npm/v/safer-buffer.svg
+[npm-url]: https://npmjs.org/package/safer-buffer
+[standard-image]: https://img.shields.io/badge/code_style-standard-brightgreen.svg
+[standard-url]: https://standardjs.com
+[secuirty-image]: https://img.shields.io/badge/Security-Responsible%20Disclosure-green.svg
+[secuirty-url]: https://github.com/nodejs/security-wg/blob/master/processes/responsible_disclosure_template.md
 
-[![NPM version][npm-image]][npm-url]
-[![NPM downloads][downloads-image]][downloads-url]
-[![Build status][build-image]][build-url]
-[![Build coverage][coverage-image]][coverage-url]
-[![License][license-image]][license-url]
+Modern Buffer API polyfill without footguns, working on Node.js from 0.8 to current.
 
-## Installation
+## How to use?
 
-```
-npm install path-to-regexp --save
-```
+First, port all `Buffer()` and `new Buffer()` calls to `Buffer.alloc()` and `Buffer.from()` API.
 
-## Usage
+Then, to achieve compatibility with outdated Node.js versions (`<4.5.0` and 5.x `<5.9.0`), use
+`const Buffer = require('safer-buffer').Buffer` in all files where you make calls to the new
+Buffer API. _Use `var` instead of `const` if you need that for your Node.js version range support._
 
-```js
-const {
-  match,
-  pathToRegexp,
-  compile,
-  parse,
-  stringify,
-} = require("path-to-regexp");
-```
+Also, see the
+[porting Buffer](https://github.com/ChALkeR/safer-buffer/blob/master/Porting-Buffer.md) guide.
 
-### Parameters
+## Do I need it?
 
-Parameters match arbitrary strings in a path by matching up to the end of the segment, or up to any proceeding tokens. They are defined by prefixing a colon to the parameter name (`:foo`). Parameter names can use any valid JavaScript identifier, or be double quoted to use other characters (`:"param-name"`).
+Hopefully, not — dropping support for outdated Node.js versions should be fine nowdays, and that
+is the recommended path forward. You _do_ need to port to the `Buffer.alloc()` and `Buffer.from()`
+though.
 
-```js
-const fn = match("/:foo/:bar");
+See the [porting guide](https://github.com/ChALkeR/safer-buffer/blob/master/Porting-Buffer.md)
+for a better description.
 
-fn("/test/route");
-//=> { path: '/test/route', params: { foo: 'test', bar: 'route' } }
-```
+## Why not [safe-buffer](https://npmjs.com/safe-buffer)?
 
-### Wildcard
+_In short: while `safe-buffer` serves as a polyfill for the new API, it allows old API usage and
+itself contains footguns._
 
-Wildcard parameters match one or more characters across multiple segments. They are defined the same way as regular parameters, but are prefixed with an asterisk (`*foo`).
+`safe-buffer` could be used safely to get the new API while still keeping support for older
+Node.js versions (like this module), but while analyzing ecosystem usage of the old Buffer API
+I found out that `safe-buffer` is itself causing problems in some cases.
 
-```js
-const fn = match("/*splat");
+For example, consider the following snippet:
 
-fn("/bar/baz");
-//=> { path: '/bar/baz', params: { splat: [ 'bar', 'baz' ] } }
-```
-
-### Optional
-
-Braces can be used to define parts of the path that are optional.
-
-```js
-const fn = match("/users{/:id}/delete");
-
-fn("/users/delete");
-//=> { path: '/users/delete', params: {} }
-
-fn("/users/123/delete");
-//=> { path: '/users/123/delete', params: { id: '123' } }
+```console
+$ cat example.unsafe.js
+console.log(Buffer(20))
+$ ./node-v6.13.0-linux-x64/bin/node example.unsafe.js
+<Buffer 0a 00 00 00 00 00 00 00 28 13 de 02 00 00 00 00 05 00 00 00>
+$ standard example.unsafe.js
+standard: Use JavaScript Standard Style (https://standardjs.com)
+  /home/chalker/repo/safer-buffer/example.unsafe.js:2:13: 'Buffer()' was deprecated since v6. Use 'Buffer.alloc()' or 'Buffer.from()' (use 'https://www.npmjs.com/package/safe-buffer' for '<4.5.0') instead.
 ```
 
-## Match
+This is allocates and writes to console an uninitialized chunk of memory.
+[standard](https://www.npmjs.com/package/standard) linter (among others) catch that and warn people
+to avoid using unsafe API.
 
-The `match` function returns a function for matching strings against a path:
+Let's now throw in `safe-buffer`!
 
-- **path** String, `TokenData` object, or array of strings and `TokenData` objects.
-- **options** _(optional)_ (Extends [pathToRegexp](#pathToRegexp) options)
-  - **decode** Function for decoding strings to params, or `false` to disable all processing. (default: `decodeURIComponent`)
-
-```js
-const fn = match("/foo/:bar");
+```console
+$ cat example.safe-buffer.js
+const Buffer = require('safe-buffer').Buffer
+console.log(Buffer(20))
+$ standard example.safe-buffer.js
+$ ./node-v6.13.0-linux-x64/bin/node example.safe-buffer.js
+<Buffer 08 00 00 00 00 00 00 00 28 58 01 82 fe 7f 00 00 00 00 00 00>
 ```
 
-**Please note:** `path-to-regexp` is intended for ordered data (e.g. paths, hosts). It can not handle arbitrarily ordered data (e.g. query strings, URL fragments, JSON, etc).
+See the problem? Adding in `safe-buffer` _magically removes the lint warning_, but the behavior
+remains identiсal to what we had before, and when launched on Node.js 6.x LTS — this dumps out
+chunks of uninitialized memory.
+_And this code will still emit runtime warnings on Node.js 10.x and above._
 
-## PathToRegexp
+That was done by design. I first considered changing `safe-buffer`, prohibiting old API usage or
+emitting warnings on it, but that significantly diverges from `safe-buffer` design. After some
+discussion, it was decided to move my approach into a separate package, and _this is that separate
+package_.
 
-The `pathToRegexp` function returns the `regexp` for matching strings against paths, and an array of `keys` for understanding the `RegExp#exec` matches.
+This footgun is not imaginary — I observed top-downloaded packages doing that kind of thing,
+«fixing» the lint warning by blindly including `safe-buffer` without any actual changes.
 
-- **path** String, `TokenData` object, or array of strings and `TokenData` objects.
-- **options** _(optional)_ (See [parse](#parse) for more options)
-  - **sensitive** Regexp will be case sensitive. (default: `false`)
-  - **end** Validate the match reaches the end of the string. (default: `true`)
-  - **delimiter** The default delimiter for segments, e.g. `[^/]` for `:named` parameters. (default: `'/'`)
-  - **trailing** Allows optional trailing delimiter to match. (default: `true`)
+Also in some cases, even if the API _was_ migrated to use of safe Buffer API — a random pull request
+can bring unsafe Buffer API usage back to the codebase by adding new calls — and that could go
+unnoticed even if you have a linter prohibiting that (becase of the reason stated above), and even
+pass CI. _I also observed that being done in popular packages._
 
-```js
-const { regexp, keys } = pathToRegexp("/foo/:bar");
+Some examples:
+ * [webdriverio](https://github.com/webdriverio/webdriverio/commit/05cbd3167c12e4930f09ef7cf93b127ba4effae4#diff-124380949022817b90b622871837d56cR31)
+   (a module with 548 759 downloads/month),
+ * [websocket-stream](https://github.com/maxogden/websocket-stream/commit/c9312bd24d08271687d76da0fe3c83493871cf61)
+   (218 288 d/m, fix in [maxogden/websocket-stream#142](https://github.com/maxogden/websocket-stream/pull/142)),
+ * [node-serialport](https://github.com/node-serialport/node-serialport/commit/e8d9d2b16c664224920ce1c895199b1ce2def48c)
+   (113 138 d/m, fix in [node-serialport/node-serialport#1510](https://github.com/node-serialport/node-serialport/pull/1510)),
+ * [karma](https://github.com/karma-runner/karma/commit/3d94b8cf18c695104ca195334dc75ff054c74eec)
+   (3 973 193 d/m, fix in [karma-runner/karma#2947](https://github.com/karma-runner/karma/pull/2947)),
+ * [spdy-transport](https://github.com/spdy-http2/spdy-transport/commit/5375ac33f4a62a4f65bcfc2827447d42a5dbe8b1)
+   (5 970 727 d/m, fix in [spdy-http2/spdy-transport#53](https://github.com/spdy-http2/spdy-transport/pull/53)).
+ * And there are a lot more over the ecosystem.
 
-regexp.exec("/foo/123"); //=> ["/foo/123", "123"]
-```
+I filed a PR at
+[mysticatea/eslint-plugin-node#110](https://github.com/mysticatea/eslint-plugin-node/pull/110) to
+partially fix that (for cases when that lint rule is used), but it is a semver-major change for
+linter rules and presets, so it would take significant time for that to reach actual setups.
+_It also hasn't been released yet (2018-03-20)._
 
-## Compile ("Reverse" Path-To-RegExp)
+Also, `safer-buffer` discourages the usage of `.allocUnsafe()`, which is often done by a mistake.
+It still supports it with an explicit concern barier, by placing it under
+`require('safer-buffer/dangereous')`.
 
-The `compile` function will return a function for transforming parameters into a valid path:
+## But isn't throwing bad?
 
-- **path** A string or `TokenData` object.
-- **options** (See [parse](#parse) for more options)
-  - **delimiter** The default delimiter for segments, e.g. `[^/]` for `:named` parameters. (default: `'/'`)
-  - **encode** Function for encoding input strings for output into the path, or `false` to disable entirely. (default: `encodeURIComponent`)
+Not really. It's an error that could be noticed and fixed early, instead of causing havoc later like
+unguarded `new Buffer()` calls that end up receiving user input can do.
 
-```js
-const toPath = compile("/user/:id");
+This package affects only the files where `var Buffer = require('safer-buffer').Buffer` was done, so
+it is really simple to keep track of things and make sure that you don't mix old API usage with that.
+Also, CI should hint anything that you might have missed.
 
-toPath({ id: "name" }); //=> "/user/name"
-toPath({ id: "café" }); //=> "/user/caf%C3%A9"
+New commits, if tested, won't land new usage of unsafe Buffer API this way.
+_Node.js 10.x also deals with that by printing a runtime depecation warning._
 
-const toPathRepeated = compile("/*segment");
+### Would it affect third-party modules?
 
-toPathRepeated({ segment: ["foo"] }); //=> "/foo"
-toPathRepeated({ segment: ["a", "b", "c"] }); //=> "/a/b/c"
+No, unless you explicitly do an awful thing like monkey-patching or overriding the built-in `Buffer`.
+Don't do that.
 
-// When disabling `encode`, you need to make sure inputs are encoded correctly. No arrays are accepted.
-const toPathRaw = compile("/user/:id", { encode: false });
+### But I don't want throwing…
 
-toPathRaw({ id: "%3A%2F" }); //=> "/user/%3A%2F"
-```
+That is also fine!
 
-## Stringify
+Also, it could be better in some cases when you don't comprehensive enough test coverage.
 
-Transform a `TokenData` object to a Path-to-RegExp string.
+In that case — just don't override `Buffer` and use
+`var SaferBuffer = require('safer-buffer').Buffer` instead.
 
-- **data** A `TokenData` object.
+That way, everything using `Buffer` natively would still work, but there would be two drawbacks:
 
-```js
-const data = {
-  tokens: [
-    { type: "text", value: "/" },
-    { type: "param", name: "foo" },
-  ],
-};
+* `Buffer.from`/`Buffer.alloc` won't be polyfilled — use `SaferBuffer.from` and
+  `SaferBuffer.alloc` instead.
+* You are still open to accidentally using the insecure deprecated API — use a linter to catch that.
 
-const path = stringify(data); //=> "/:foo"
-```
+Note that using a linter to catch accidential `Buffer` constructor usage in this case is strongly
+recommended. `Buffer` is not overriden in this usecase, so linters won't get confused.
 
-## Developers
+## «Without footguns»?
 
-- If you are rewriting paths with match and compile, consider using `encode: false` and `decode: false` to keep raw paths passed around.
-- To ensure matches work on paths containing characters usually encoded, such as emoji, consider using [encodeurl](https://github.com/pillarjs/encodeurl) for `encodePath`.
+Well, it is still possible to do _some_ things with `Buffer` API, e.g. accessing `.buffer` property
+on older versions and duping things from there. You shouldn't do that in your code, probabably.
 
-### Parse
+The intention is to remove the most significant footguns that affect lots of packages in the
+ecosystem, and to do it in the proper way.
 
-The `parse` function accepts a string and returns `TokenData`, which can be used with `match` and `compile`.
-
-- **path** A string.
-- **options** _(optional)_
-  - **encodePath** A function for encoding input strings. (default: `x => x`, recommended: [`encodeurl`](https://github.com/pillarjs/encodeurl))
-
-### Tokens
-
-`TokenData` has two properties:
-
-- **tokens** A sequence of tokens, currently of types `text`, `param`, `wildcard`, or `group`.
-- **originalPath** The original path used with `parse`, shown in error messages to assist debugging.
-
-### Custom path
-
-In some applications you may not be able to use the `path-to-regexp` syntax, but you still want to use this library for `match` and `compile`. For example:
-
-```js
-import { match } from "path-to-regexp";
-
-const tokens = [
-  { type: "text", value: "/" },
-  { type: "param", name: "foo" },
-];
-const originalPath = "/[foo]"; // To help debug error messages.
-const path = { tokens, originalPath };
-const fn = match(path);
-
-fn("/test"); //=> { path: '/test', params: { foo: 'test' } }
-```
-
-## Errors
-
-An effort has been made to ensure ambiguous paths from previous releases throw an error. This means you might be seeing an error when things worked before.
-
-### Missing parameter name
-
-Parameter names must be provided after `:` or `*`, for example `/*path`. They can be valid JavaScript identifiers (e.g. `:myName`) or JSON strings (`:"my-name"`).
-
-### Unexpected `?` or `+`
-
-In past releases, `?`, `*`, and `+` were used to denote optional or repeating parameters. As an alternative, try these:
-
-- For optional (`?`), use braces: `/file{.:ext}`.
-- For one or more (`+`), use a wildcard: `/*path`.
-- For zero or more (`*`), use both: `/files{/*path}`.
-
-### Unexpected `(`, `)`, `[`, `]`, etc.
-
-Previous versions of Path-to-RegExp used these for RegExp features. This version no longer supports them so they've been reserved to avoid ambiguity. To match these characters literally, escape them with a backslash, e.g. `"\\("`.
-
-### Unterminated quote
-
-Parameter names can be wrapped in double quote characters, and this error means you forgot to close the quote character. For example, `:"foo`.
-
-### Express <= 4.x
-
-Path-To-RegExp breaks compatibility with Express <= `4.x` in the following ways:
-
-- The wildcard `*` must have a name and matches the behavior of parameters `:`.
-- The optional character `?` is no longer supported, use braces instead: `/:file{.:ext}`.
-- Regexp characters are not supported.
-- Some characters have been reserved to avoid confusion during upgrade (`()[]?+!`).
-- Parameter names now support valid JavaScript identifiers, or quoted like `:"this"`.
-
-## License
-
-MIT
-
-[npm-image]: https://img.shields.io/npm/v/path-to-regexp
-[npm-url]: https://npmjs.org/package/path-to-regexp
-[downloads-image]: https://img.shields.io/npm/dm/path-to-regexp
-[downloads-url]: https://npmjs.org/package/path-to-regexp
-[build-image]: https://img.shields.io/github/actions/workflow/status/pillarjs/path-to-regexp/ci.yml?branch=master
-[build-url]: https://github.com/pillarjs/path-to-regexp/actions/workflows/ci.yml?query=branch%3Amaster
-[coverage-image]: https://img.shields.io/codecov/c/gh/pillarjs/path-to-regexp
-[coverage-url]: https://codecov.io/gh/pillarjs/path-to-regexp
-[license-image]: http://img.shields.io/npm/l/path-to-regexp.svg?style=flat
-[license-url]: LICENSE.md
+Also, this package doesn't protect against security issues affecting some Node.js versions, so for
+usage in your own production code, it is still recommended to update to a Node.js version
+[supported by upstream](https://github.com/nodejs/release#release-schedule).
