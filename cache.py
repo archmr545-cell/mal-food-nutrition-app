@@ -1,75 +1,256 @@
-# SPDX-FileCopyrightText: 2015 Eric Larson
-#
-# SPDX-License-Identifier: Apache-2.0
+import os
+import textwrap
+from collections.abc import Callable
+from optparse import Values
 
-"""
-The cache object API for implementing caches. The default is a thread
-safe in-memory dictionary.
-"""
+from pip._internal.cli.base_command import Command
+from pip._internal.cli.status_codes import ERROR, SUCCESS
+from pip._internal.exceptions import CommandError, PipError
+from pip._internal.utils import filesystem
+from pip._internal.utils.logging import getLogger
+from pip._internal.utils.misc import format_size
 
-from __future__ import annotations
-
-from threading import Lock
-from typing import IO, TYPE_CHECKING, MutableMapping
-
-if TYPE_CHECKING:
-    from datetime import datetime
+logger = getLogger(__name__)
 
 
-class BaseCache:
-    def get(self, key: str) -> bytes | None:
-        raise NotImplementedError()
-
-    def set(
-        self, key: str, value: bytes, expires: int | datetime | None = None
-    ) -> None:
-        raise NotImplementedError()
-
-    def delete(self, key: str) -> None:
-        raise NotImplementedError()
-
-    def close(self) -> None:
-        pass
-
-
-class DictCache(BaseCache):
-    def __init__(self, init_dict: MutableMapping[str, bytes] | None = None) -> None:
-        self.lock = Lock()
-        self.data = init_dict or {}
-
-    def get(self, key: str) -> bytes | None:
-        return self.data.get(key, None)
-
-    def set(
-        self, key: str, value: bytes, expires: int | datetime | None = None
-    ) -> None:
-        with self.lock:
-            self.data.update({key: value})
-
-    def delete(self, key: str) -> None:
-        with self.lock:
-            if key in self.data:
-                self.data.pop(key)
-
-
-class SeparateBodyBaseCache(BaseCache):
+class CacheCommand(Command):
     """
-    In this variant, the body is not stored mixed in with the metadata, but is
-    passed in (as a bytes-like object) in a separate call to ``set_body()``.
+    Inspect and manage pip's wheel cache.
 
-    That is, the expected interaction pattern is::
+    Subcommands:
 
-        cache.set(key, serialized_metadata)
-        cache.set_body(key)
+    - dir: Show the cache directory.
+    - info: Show information about the cache.
+    - list: List filenames of packages stored in the cache.
+    - remove: Remove one or more package from the cache.
+    - purge: Remove all items from the cache.
 
-    Similarly, the body should be loaded separately via ``get_body()``.
+    ``<pattern>`` can be a glob expression or a package name.
     """
 
-    def set_body(self, key: str, body: bytes) -> None:
-        raise NotImplementedError()
+    ignore_require_venv = True
+    usage = """
+        %prog dir
+        %prog info
+        %prog list [<pattern>] [--format=[human, abspath]]
+        %prog remove <pattern>
+        %prog purge
+    """
 
-    def get_body(self, key: str) -> IO[bytes] | None:
-        """
-        Return the body as file-like object.
-        """
-        raise NotImplementedError()
+    def add_options(self) -> None:
+        self.cmd_opts.add_option(
+            "--format",
+            action="store",
+            dest="list_format",
+            default="human",
+            choices=("human", "abspath"),
+            help="Select the output format among: human (default) or abspath",
+        )
+
+        self.parser.insert_option_group(0, self.cmd_opts)
+
+    def handler_map(self) -> dict[str, Callable[[Values, list[str]], None]]:
+        return {
+            "dir": self.get_cache_dir,
+            "info": self.get_cache_info,
+            "list": self.list_cache_items,
+            "remove": self.remove_cache_items,
+            "purge": self.purge_cache,
+        }
+
+    def run(self, options: Values, args: list[str]) -> int:
+        handler_map = self.handler_map()
+
+        if not options.cache_dir:
+            logger.error("pip cache commands can not function since cache is disabled.")
+            return ERROR
+
+        # Determine action
+        if not args or args[0] not in handler_map:
+            logger.error(
+                "Need an action (%s) to perform.",
+                ", ".join(sorted(handler_map)),
+            )
+            return ERROR
+
+        action = args[0]
+
+        # Error handling happens here, not in the action-handlers.
+        try:
+            handler_map[action](options, args[1:])
+        except PipError as e:
+            logger.error(e.args[0])
+            return ERROR
+
+        return SUCCESS
+
+    def get_cache_dir(self, options: Values, args: list[str]) -> None:
+        if args:
+            raise CommandError("Too many arguments")
+
+        logger.info(options.cache_dir)
+
+    def get_cache_info(self, options: Values, args: list[str]) -> None:
+        if args:
+            raise CommandError("Too many arguments")
+
+        num_http_files = len(self._find_http_files(options))
+        num_packages = len(self._find_wheels(options, "*"))
+
+        http_cache_location = self._cache_dir(options, "http-v2")
+        old_http_cache_location = self._cache_dir(options, "http")
+        wheels_cache_location = self._cache_dir(options, "wheels")
+        http_cache_size = filesystem.format_size(
+            filesystem.directory_size(http_cache_location)
+            + filesystem.directory_size(old_http_cache_location)
+        )
+        wheels_cache_size = filesystem.format_directory_size(wheels_cache_location)
+
+        message = (
+            textwrap.dedent("""
+                    Package index page cache location (pip v23.3+): {http_cache_location}
+                    Package index page cache location (older pips): {old_http_cache_location}
+                    Package index page cache size: {http_cache_size}
+                    Number of HTTP files: {num_http_files}
+                    Locally built wheels location: {wheels_cache_location}
+                    Locally built wheels size: {wheels_cache_size}
+                    Number of locally built wheels: {package_count}
+                """)  # noqa: E501
+            .format(
+                http_cache_location=http_cache_location,
+                old_http_cache_location=old_http_cache_location,
+                http_cache_size=http_cache_size,
+                num_http_files=num_http_files,
+                wheels_cache_location=wheels_cache_location,
+                package_count=num_packages,
+                wheels_cache_size=wheels_cache_size,
+            )
+            .strip()
+        )
+
+        logger.info(message)
+
+    def list_cache_items(self, options: Values, args: list[str]) -> None:
+        if len(args) > 1:
+            raise CommandError("Too many arguments")
+
+        if args:
+            pattern = args[0]
+        else:
+            pattern = "*"
+
+        files = self._find_wheels(options, pattern)
+        if options.list_format == "human":
+            self.format_for_human(files)
+        else:
+            self.format_for_abspath(files)
+
+    def format_for_human(self, files: list[str]) -> None:
+        if not files:
+            logger.info("No locally built wheels cached.")
+            return
+
+        results = []
+        for filename in files:
+            wheel = os.path.basename(filename)
+            size = filesystem.format_file_size(filename)
+            results.append(f" - {wheel} ({size})")
+        logger.info("Cache contents:\n")
+        logger.info("\n".join(sorted(results)))
+
+    def format_for_abspath(self, files: list[str]) -> None:
+        if files:
+            logger.info("\n".join(sorted(files)))
+
+    def remove_cache_items(self, options: Values, args: list[str]) -> None:
+        if len(args) > 1:
+            raise CommandError("Too many arguments")
+
+        if not args:
+            raise CommandError("Please provide a pattern")
+
+        files = self._find_wheels(options, args[0])
+
+        no_matching_msg = "No matching packages"
+        if args[0] == "*":
+            # Only fetch http files if no specific pattern given
+            files += self._find_http_files(options)
+        else:
+            # Add the pattern to the log message
+            no_matching_msg += f' for pattern "{args[0]}"'
+
+        if not files:
+            logger.warning(no_matching_msg)
+
+        bytes_removed = 0
+        for filename in files:
+            bytes_removed += os.stat(filename).st_size
+            os.unlink(filename)
+            logger.verbose("Removed %s", filename)
+
+        http_dirs = filesystem.subdirs_without_files(self._cache_dir(options, "http"))
+        http_v2_dirs = filesystem.subdirs_without_files(
+            self._cache_dir(options, "http-v2")
+        )
+        wheel_dirs = filesystem.subdirs_without_wheels(
+            self._cache_dir(options, "wheels")
+        )
+        dirs = [*http_dirs, *http_v2_dirs, *wheel_dirs]
+
+        for subdir in dirs:
+            try:
+                for file in subdir.iterdir():
+                    file.unlink(missing_ok=True)
+                subdir.rmdir()
+            except FileNotFoundError:
+                # If the directory is already gone, that's fine.
+                pass
+            logger.verbose("Removed %s", subdir)
+
+        # selfcheck.json is no longer used by pip.
+        selfcheck_json = self._cache_dir(options, "selfcheck.json")
+        if os.path.isfile(selfcheck_json):
+            os.remove(selfcheck_json)
+            logger.verbose("Removed legacy selfcheck.json file")
+
+        logger.info("Files removed: %s (%s)", len(files), format_size(bytes_removed))
+        logger.info("Directories removed: %s", len(dirs))
+
+    def purge_cache(self, options: Values, args: list[str]) -> None:
+        if args:
+            raise CommandError("Too many arguments")
+
+        return self.remove_cache_items(options, ["*"])
+
+    def _cache_dir(self, options: Values, subdir: str) -> str:
+        return os.path.join(options.cache_dir, subdir)
+
+    def _find_http_files(self, options: Values) -> list[str]:
+        old_http_dir = self._cache_dir(options, "http")
+        new_http_dir = self._cache_dir(options, "http-v2")
+        return filesystem.find_files(old_http_dir, "*") + filesystem.find_files(
+            new_http_dir, "*"
+        )
+
+    def _find_wheels(self, options: Values, pattern: str) -> list[str]:
+        wheel_dir = self._cache_dir(options, "wheels")
+
+        # The wheel filename format, as specified in PEP 427, is:
+        #     {distribution}-{version}(-{build})?-{python}-{abi}-{platform}.whl
+        #
+        # Additionally, non-alphanumeric values in the distribution are
+        # normalized to underscores (_), meaning hyphens can never occur
+        # before `-{version}`.
+        #
+        # Given that information:
+        # - If the pattern we're given contains a hyphen (-), the user is
+        #   providing at least the version. Thus, we can just append `*.whl`
+        #   to match the rest of it.
+        # - If the pattern we're given doesn't contain a hyphen (-), the
+        #   user is only providing the name. Thus, we append `-*.whl` to
+        #   match the hyphen before the version, followed by anything else.
+        #
+        # PEP 427: https://www.python.org/dev/peps/pep-0427/
+        pattern = pattern + ("*.whl" if "-" in pattern else "-*.whl")
+
+        return filesystem.find_files(wheel_dir, pattern)
