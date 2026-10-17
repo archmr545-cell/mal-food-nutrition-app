@@ -1,7 +1,1 @@
-node_modules/
-.env
-database.db
-database.db-shm
-database.db-wal
-npm-debug.log*
-public/supabase-config.js
+*
