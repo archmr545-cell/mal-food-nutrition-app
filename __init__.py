@@ -1,60 +1,32 @@
-"""
-Multidict implementation.
-
-HTTP Headers and URL query string require specific data structure:
-multidict. It behaves mostly like a dict but it can have
-several values for the same key.
-"""
+"""propcache: An accelerated property cache for Python classes."""
 
 from typing import TYPE_CHECKING
 
-from ._abc import MultiMapping, MutableMultiMapping
-from ._compat import USE_EXTENSIONS
+_PUBLIC_API = ("cached_property", "under_cached_property")
 
-__all__ = (
-    "CIMultiDict",
-    "CIMultiDictProxy",
-    "MultiDict",
-    "MultiDictProxy",
-    "MultiMapping",
-    "MutableMultiMapping",
-    "getversion",
-    "istr",
-    "upstr",
-)
+__version__ = "0.5.4"
+__all__ = ()
 
-__version__ = "6.9.1"
+# Imports have moved to `propcache.api` in 0.2.0+.
+# This module is now a facade for the API.
+if TYPE_CHECKING:
+    from .api import cached_property as cached_property  # noqa: F401
+    from .api import under_cached_property as under_cached_property  # noqa: F401
 
 
-if TYPE_CHECKING or not USE_EXTENSIONS:
-    from ._multidict_py import (
-        CIMultiDict,
-        CIMultiDictProxy,
-        MultiDict,
-        MultiDictProxy,
-        getversion,
-        istr,
-    )
-else:
-    from collections.abc import ItemsView, KeysView, ValuesView
+def _import_facade(attr: str) -> object:
+    """Import the public API from the `api` module."""
+    if attr in _PUBLIC_API:
+        from . import api  # pylint: disable=import-outside-toplevel
 
-    from ._multidict import (
-        CIMultiDict,
-        CIMultiDictProxy,
-        MultiDict,
-        MultiDictProxy,
-        _ItemsView,
-        _KeysView,
-        _ValuesView,
-        getversion,
-        istr,
-    )
-
-    MultiMapping.register(MultiDictProxy)
-    MutableMultiMapping.register(MultiDict)
-    KeysView.register(_KeysView)
-    ItemsView.register(_ItemsView)
-    ValuesView.register(_ValuesView)
+        return getattr(api, attr)
+    raise AttributeError(f"module '{__package__}' has no attribute '{attr}'")
 
 
-upstr = istr
+def _dir_facade() -> list[str]:
+    """Include the public API in the module's dir() output."""
+    return [*_PUBLIC_API, *globals().keys()]
+
+
+__getattr__ = _import_facade
+__dir__ = _dir_facade
