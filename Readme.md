@@ -1,152 +1,43 @@
-# Bytes utility
 
-[![NPM Version][npm-image]][npm-url]
-[![NPM Downloads][downloads-image]][downloads-url]
-[![Build Status][ci-image]][ci-url]
-[![Test Coverage][coveralls-image]][coveralls-url]
+# escape-html
 
-Utility to parse a string bytes (ex: `1TB`) to bytes (`1099511627776`) and vice-versa.
+  Escape string for use in HTML
 
-## Installation
-
-This is a [Node.js](https://nodejs.org/en/) module available through the
-[npm registry](https://www.npmjs.com/). Installation is done using the
-[`npm install` command](https://docs.npmjs.com/getting-started/installing-npm-packages-locally):
-
-```bash
-$ npm install bytes
-```
-
-## Usage
+## Example
 
 ```js
-var bytes = require('bytes');
+var escape = require('escape-html');
+var html = escape('foo & bar');
+// -> foo &amp; bar
 ```
 
-#### bytes(number｜string value, [options]): number｜string｜null
+## Benchmark
 
-Default export function. Delegates to either `bytes.format` or `bytes.parse` based on the type of `value`.
-
-**Arguments**
-
-| Name    | Type     | Description        |
-|---------|----------|--------------------|
-| value   | `number`｜`string` | Number value to format or string value to parse |
-| options | `Object` | Conversion options for `format` |
-
-**Returns**
-
-| Name    | Type             | Description                                     |
-|---------|------------------|-------------------------------------------------|
-| results | `string`｜`number`｜`null` | Return null upon error. Numeric value in bytes, or string value otherwise. |
-
-**Example**
-
-```js
-bytes(1024);
-// output: '1KB'
-
-bytes('1KB');
-// output: 1024
 ```
+$ npm run-script bench
 
-#### bytes.format(number value, [options]): string｜null
+> escape-html@1.0.3 bench nodejs-escape-html
+> node benchmark/index.js
 
-Format the given value in bytes into a string. If the value is negative, it is kept as such. If it is a float, it is
- rounded.
 
-**Arguments**
+  http_parser@1.0
+  node@0.10.33
+  v8@3.14.5.9
+  ares@1.9.0-DEV
+  uv@0.10.29
+  zlib@1.2.3
+  modules@11
+  openssl@1.0.1j
 
-| Name    | Type     | Description        |
-|---------|----------|--------------------|
-| value   | `number` | Value in bytes     |
-| options | `Object` | Conversion options |
+  1 test completed.
+  2 tests completed.
+  3 tests completed.
 
-**Options**
-
-| Property          | Type   | Description                                                                             |
-|-------------------|--------|-----------------------------------------------------------------------------------------|
-| decimalPlaces | `number`｜`null` | Maximum number of decimal places to include in output. Default value to `2`. |
-| fixedDecimals | `boolean`｜`null` | Whether to always display the maximum number of decimal places. Default value to `false` |
-| thousandsSeparator | `string`｜`null` | Example of values: `' '`, `','` and `'.'`... Default value to `''`. |
-| unit | `string`｜`null` | The unit in which the result will be returned (B/KB/MB/GB/TB). Default value to `''` (which means auto detect). |
-| unitSeparator | `string`｜`null` | Separator to use between number and unit. Default value to `''`. |
-
-**Returns**
-
-| Name    | Type             | Description                                     |
-|---------|------------------|-------------------------------------------------|
-| results | `string`｜`null` | Return null upon error. String value otherwise. |
-
-**Example**
-
-```js
-bytes.format(1024);
-// output: '1KB'
-
-bytes.format(1000);
-// output: '1000B'
-
-bytes.format(1000, {thousandsSeparator: ' '});
-// output: '1 000B'
-
-bytes.format(1024 * 1.7, {decimalPlaces: 0});
-// output: '2KB'
-
-bytes.format(1024, {unitSeparator: ' '});
-// output: '1 KB'
-```
-
-#### bytes.parse(string｜number value): number｜null
-
-Parse the string value into an integer in bytes. If no unit is given, or `value`
-is a number, it is assumed the value is in bytes.
-
-Supported units and abbreviations are as follows and are case-insensitive:
-
-  * `b` for bytes
-  * `kb` for kilobytes
-  * `mb` for megabytes
-  * `gb` for gigabytes
-  * `tb` for terabytes
-  * `pb` for petabytes
-
-The units are in powers of two, not ten. This means 1kb = 1024b according to this parser.
-
-**Arguments**
-
-| Name          | Type   | Description        |
-|---------------|--------|--------------------|
-| value   | `string`｜`number` | String to parse, or number in bytes.   |
-
-**Returns**
-
-| Name    | Type        | Description             |
-|---------|-------------|-------------------------|
-| results | `number`｜`null` | Return null upon error. Value in bytes otherwise. |
-
-**Example**
-
-```js
-bytes.parse('1KB');
-// output: 1024
-
-bytes.parse('1024');
-// output: 1024
-
-bytes.parse(1024);
-// output: 1024
+  no special characters    x 19,435,271 ops/sec ±0.85% (187 runs sampled)
+  single special character x  6,132,421 ops/sec ±0.67% (194 runs sampled)
+  many special characters  x  3,175,826 ops/sec ±0.65% (193 runs sampled)
 ```
 
 ## License
 
-[MIT](LICENSE)
-
-[ci-image]: https://badgen.net/github/checks/visionmedia/bytes.js/master?label=ci
-[ci-url]: https://github.com/visionmedia/bytes.js/actions?query=workflow%3Aci
-[coveralls-image]: https://badgen.net/coveralls/c/github/visionmedia/bytes.js/master
-[coveralls-url]: https://coveralls.io/r/visionmedia/bytes.js?branch=master
-[downloads-image]: https://badgen.net/npm/dm/bytes
-[downloads-url]: https://npmjs.org/package/bytes
-[npm-image]: https://badgen.net/npm/v/bytes
-[npm-url]: https://npmjs.org/package/bytes
+  MIT

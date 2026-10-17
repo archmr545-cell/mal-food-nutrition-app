@@ -1,63 +1,56 @@
 'use strict';
 
-var callBind = require('../');
-var hasStrictMode = require('has-strict-mode')();
-var forEach = require('for-each');
-var inspect = require('object-inspect');
-var v = require('es-value-fixtures');
+var $defineProperty = require('../');
 
 var test = require('tape');
+var gOPD = require('gopd');
 
-test('callBindBasic', function (t) {
-	forEach(v.nonFunctions, function (nonFunction) {
-		t['throws'](
-			// @ts-expect-error
-			function () { callBind([nonFunction]); },
-			TypeError,
-			inspect(nonFunction) + ' is not a function'
+test('defineProperty: supported', { skip: !$defineProperty }, function (t) {
+	t.plan(4);
+
+	t.equal(typeof $defineProperty, 'function', 'defineProperty is supported');
+	if ($defineProperty && gOPD) { // this `if` check is just to shut TS up
+		/** @type {{ a: number, b?: number, c?: number }} */
+		var o = { a: 1 };
+
+		$defineProperty(o, 'b', { enumerable: true, value: 2 });
+		t.deepEqual(
+			gOPD(o, 'b'),
+			{
+				configurable: false,
+				enumerable: true,
+				value: 2,
+				writable: false
+			},
+			'property descriptor is as expected'
 		);
-	});
 
-	var sentinel = { sentinel: true };
-	/** @type {<T, A extends number, B extends number>(this: T, a: A, b: B) => [T | undefined, A, B]} */
-	var func = function (a, b) {
-		// eslint-disable-next-line no-invalid-this
-		return [!hasStrictMode && this === global ? undefined : this, a, b];
-	};
-	t.equal(func.length, 2, 'original function length is 2');
+		$defineProperty(o, 'c', { enumerable: false, value: 3, writable: true });
+		t.deepEqual(
+			gOPD(o, 'c'),
+			{
+				configurable: false,
+				enumerable: false,
+				value: 3,
+				writable: true
+			},
+			'property descriptor is as expected'
+		);
+	}
 
-	/** type {(thisArg: unknown, a: number, b: number) => [unknown, number, number]} */
-	var bound = callBind([func]);
-	/** type {((a: number, b: number) => [typeof sentinel, typeof a, typeof b])} */
-	var boundR = callBind([func, sentinel]);
-	/** type {((b: number) => [typeof sentinel, number, typeof b])} */
-	var boundArg = callBind([func, sentinel, /** @type {const} */ (1)]);
+	t.equal($defineProperty, Object.defineProperty, 'defineProperty is Object.defineProperty');
 
-	// @ts-expect-error
-	t.deepEqual(bound(), [undefined, undefined, undefined], 'bound func with no args');
+	t.end();
+});
 
-	// @ts-expect-error
-	t.deepEqual(func(), [undefined, undefined, undefined], 'unbound func with too few args');
-	// @ts-expect-error
-	t.deepEqual(bound(1, 2), [hasStrictMode ? 1 : Object(1), 2, undefined], 'bound func too few args');
-	// @ts-expect-error
-	t.deepEqual(boundR(), [sentinel, undefined, undefined], 'bound func with receiver, with too few args');
-	// @ts-expect-error
-	t.deepEqual(boundArg(), [sentinel, 1, undefined], 'bound func with receiver and arg, with too few args');
+test('defineProperty: not supported', { skip: !!$defineProperty }, function (t) {
+	t.notOk($defineProperty, 'defineProperty is not supported');
 
-	t.deepEqual(func(1, 2), [undefined, 1, 2], 'unbound func with right args');
-	t.deepEqual(bound(1, 2, 3), [hasStrictMode ? 1 : Object(1), 2, 3], 'bound func with right args');
-	t.deepEqual(boundR(1, 2), [sentinel, 1, 2], 'bound func with receiver, with right args');
-	t.deepEqual(boundArg(2), [sentinel, 1, 2], 'bound func with receiver and arg, with right arg');
-
-	// @ts-expect-error
-	t.deepEqual(func(1, 2, 3), [undefined, 1, 2], 'unbound func with too many args');
-	// @ts-expect-error
-	t.deepEqual(bound(1, 2, 3, 4), [hasStrictMode ? 1 : Object(1), 2, 3], 'bound func with too many args');
-	// @ts-expect-error
-	t.deepEqual(boundR(1, 2, 3), [sentinel, 1, 2], 'bound func with receiver, with too many args');
-	// @ts-expect-error
-	t.deepEqual(boundArg(2, 3), [sentinel, 1, 2], 'bound func with receiver and arg, with too many args');
+	t.match(
+		typeof $defineProperty,
+		/^(?:undefined|boolean)$/,
+		'`typeof defineProperty` is `undefined` or `boolean`'
+	);
 
 	t.end();
 });
