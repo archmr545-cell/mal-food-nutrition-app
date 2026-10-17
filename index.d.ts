@@ -1,147 +1,85 @@
-/**
- * Encode a string into another string.
- */
-export type Encode = (value: string) => string;
-/**
- * Decode a string into another string.
- */
-export type Decode = (value: string) => string;
-export interface ParseOptions {
+declare namespace getRawBody {
+  export type Encoding = string | true;
+
+  export interface Options {
     /**
-     * A function for encoding input strings.
+     * The expected length of the stream.
      */
-    encodePath?: Encode;
-}
-export interface PathToRegexpOptions {
+    length?: number | string | null;
     /**
-     * Matches the path completely without trailing characters. (default: `true`)
+     * The byte limit of the body. This is the number of bytes or any string
+     * format supported by `bytes`, for example `1000`, `'500kb'` or `'3mb'`.
      */
-    end?: boolean;
+    limit?: number | string | null;
     /**
-     * Allows optional trailing delimiter to match. (default: `true`)
+     * The encoding to use to decode the body into a string. By default, a
+     * `Buffer` instance will be returned when no encoding is specified. Most
+     * likely, you want `utf-8`, so setting encoding to `true` will decode as
+     * `utf-8`. You can use any type of encoding supported by `iconv-lite`.
      */
-    trailing?: boolean;
+    encoding?: Encoding | null;
+  }
+
+  export interface RawBodyError extends Error {
     /**
-     * Match will be case sensitive. (default: `false`)
+     * The limit in bytes.
      */
-    sensitive?: boolean;
+    limit?: number;
     /**
-     * The default delimiter for segments. (default: `'/'`)
+     * The expected length of the stream.
      */
-    delimiter?: string;
-}
-export interface MatchOptions extends PathToRegexpOptions {
+    length?: number;
+    expected?: number;
     /**
-     * Function for decoding strings for params, or `false` to disable entirely. (default: `decodeURIComponent`)
+     * The received bytes.
      */
-    decode?: Decode | false;
-}
-export interface CompileOptions {
+    received?: number;
     /**
-     * Function for encoding input strings for output into the path, or `false` to disable entirely. (default: `encodeURIComponent`)
+     * The encoding.
      */
-    encode?: Encode | false;
+    encoding?: string;
     /**
-     * The default delimiter for segments. (default: `'/'`)
+     * The corresponding status code for the error.
      */
-    delimiter?: string;
+    status: number;
+    statusCode: number;
+    /**
+     * The error type.
+     */
+    type: string;
+  }
 }
+
 /**
- * Plain text.
+ * Gets the entire buffer of a stream either as a `Buffer` or a string.
+ * Validates the stream's length against an expected length and maximum
+ * limit. Ideal for parsing request bodies.
  */
-export interface Text {
-    type: "text";
-    value: string;
-}
-/**
- * A parameter designed to match arbitrary text within a segment.
- */
-export interface Parameter {
-    type: "param";
-    name: string;
-}
-/**
- * A wildcard parameter designed to match multiple segments.
- */
-export interface Wildcard {
-    type: "wildcard";
-    name: string;
-}
-/**
- * A set of possible tokens to expand when matching.
- */
-export interface Group {
-    type: "group";
-    tokens: Token[];
-}
-/**
- * A token that corresponds with a regexp capture.
- */
-export type Key = Parameter | Wildcard;
-/**
- * A sequence of `path-to-regexp` keys that match capturing groups.
- */
-export type Keys = Array<Key>;
-/**
- * A sequence of path match characters.
- */
-export type Token = Text | Parameter | Wildcard | Group;
-/**
- * Tokenized path instance.
- */
-export declare class TokenData {
-    readonly tokens: Token[];
-    readonly originalPath?: string | undefined;
-    constructor(tokens: Token[], originalPath?: string | undefined);
-}
-/**
- * ParseError is thrown when there is an error processing the path.
- */
-export declare class PathError extends TypeError {
-    readonly originalPath: string | undefined;
-    constructor(message: string, originalPath: string | undefined);
-}
-/**
- * Parse a string for the raw tokens.
- */
-export declare function parse(str: string, options?: ParseOptions): TokenData;
-/**
- * Compile a string to a template function for the path.
- */
-export declare function compile<P extends ParamData = ParamData>(path: Path, options?: CompileOptions & ParseOptions): (params?: P) => string;
-export type ParamData = Partial<Record<string, string | string[]>>;
-export type PathFunction<P extends ParamData> = (data?: P) => string;
-/**
- * A match result contains data about the path match.
- */
-export interface MatchResult<P extends ParamData> {
-    path: string;
-    params: P;
-}
-/**
- * A match is either `false` (no match) or a match result.
- */
-export type Match<P extends ParamData> = false | MatchResult<P>;
-/**
- * The match function takes a string and returns whether it matched the path.
- */
-export type MatchFunction<P extends ParamData> = (path: string) => Match<P>;
-/**
- * Supported path types.
- */
-export type Path = string | TokenData;
-/**
- * Transform a path into a match function.
- */
-export declare function match<P extends ParamData>(path: Path | Path[], options?: MatchOptions & ParseOptions): MatchFunction<P>;
-/**
- * Transform a path into a regular expression and capture keys.
- */
-export declare function pathToRegexp(path: Path | Path[], options?: PathToRegexpOptions & ParseOptions): {
-    regexp: RegExp;
-    keys: Keys;
-};
-/**
- * Stringify token data into a path string.
- */
-export declare function stringify(data: TokenData): string;
+declare function getRawBody(
+  stream: NodeJS.ReadableStream,
+  callback: (err: getRawBody.RawBodyError, body: Buffer) => void
+): void;
+
+declare function getRawBody(
+  stream: NodeJS.ReadableStream,
+  options: (getRawBody.Options & { encoding: getRawBody.Encoding }) | getRawBody.Encoding,
+  callback: (err: getRawBody.RawBodyError, body: string) => void
+): void;
+
+declare function getRawBody(
+  stream: NodeJS.ReadableStream,
+  options: getRawBody.Options,
+  callback: (err: getRawBody.RawBodyError, body: Buffer) => void
+): void;
+
+declare function getRawBody(
+  stream: NodeJS.ReadableStream,
+  options: (getRawBody.Options & { encoding: getRawBody.Encoding }) | getRawBody.Encoding
+): Promise<string>;
+
+declare function getRawBody(
+  stream: NodeJS.ReadableStream,
+  options?: getRawBody.Options
+): Promise<Buffer>;
+
+export = getRawBody;
