@@ -1,71 +1,62 @@
-# content-type
+# call-bind-apply-helpers <sup>[![Version Badge][npm-version-svg]][package-url]</sup>
 
-[![NPM version][npm-image]][npm-url]
-[![NPM downloads][downloads-image]][downloads-url]
-[![Build status][build-image]][build-url]
-[![Build coverage][coverage-image]][coverage-url]
+[![github actions][actions-image]][actions-url]
+[![coverage][codecov-image]][codecov-url]
+[![dependency status][deps-svg]][deps-url]
+[![dev dependency status][dev-deps-svg]][dev-deps-url]
 [![License][license-image]][license-url]
+[![Downloads][downloads-image]][downloads-url]
 
-Create and parse HTTP `Content-Type` header.
+[![npm badge][npm-badge-png]][package-url]
 
-## Installation
+Helper functions around Function call/apply/bind, for use in `call-bind`.
+
+The only packages that should likely ever use this package directly are `call-bind` and `get-intrinsic`.
+Please use `call-bind` unless you have a very good reason not to.
+
+## Getting started
 
 ```sh
-npm install content-type
+npm install --save call-bind-apply-helpers
 ```
 
-## API
+## Usage/Examples
 
 ```js
-const contentType = require("content-type");
+const assert = require('assert');
+const callBindBasic = require('call-bind-apply-helpers');
+
+function f(a, b) {
+	assert.equal(this, 1);
+	assert.equal(a, 2);
+	assert.equal(b, 3);
+	assert.equal(arguments.length, 2);
+}
+
+const fBound = callBindBasic([f, 1]);
+
+delete Function.prototype.call;
+delete Function.prototype.bind;
+
+fBound(2, 3);
 ```
 
-### contentType.parse(string, options?)
+## Tests
 
-```js
-const obj = contentType.parse("image/svg+xml; charset=utf-8");
-```
+Clone the repo, `npm install`, and run `npm test`
 
-Parse a `Content-Type` header. This will return an object with the following properties (examples are shown for the string `'image/svg+xml; charset=utf-8'`):
-
-- `type`: The media type. Example: `'image/svg+xml'`.
-- `parameters`: An object of the parameters in the media type (parameter name is always lower case). Example: `{charset: 'utf-8'}`.
-
-The parser is lenient and does not error. You should validate `type` and `parameters` before trusting them.
-
-#### Options
-
-- `parameters` (default: `true`): Set to `false` to skip parameters.
-- `comma` (default: `false`): Set to `true` to stop on a comma. This can be used to parse the media range in an `Accept` header.
-- `start` (default: `0`): Set index to start parsing from.
-
-### contentType.format(obj)
-
-```js
-const str = contentType.format({
-  type: "image/svg+xml",
-  parameters: { charset: "utf-8" },
-});
-```
-
-Format an object into a `Content-Type` header. This will return a string of the content type for the given object with the following properties (examples are shown that produce the string `'image/svg+xml; charset=utf-8'`):
-
-- `type`: The media type. Example: `'image/svg+xml'`.
-- `parameters`: An optional object of the parameters in the media type. Example: `{charset: 'utf-8'}`.
-
-Throws a `TypeError` if the object contains an invalid type or parameter names.
-
-## License
-
-[MIT](LICENSE)
-
-[npm-image]: https://img.shields.io/npm/v/content-type
-[npm-url]: https://npmjs.org/package/content-type
-[downloads-image]: https://img.shields.io/npm/dm/content-type
-[downloads-url]: https://npmjs.org/package/content-type
-[build-image]: https://img.shields.io/github/actions/workflow/status/jshttp/content-type/ci.yml?branch=master
-[build-url]: https://github.com/jshttp/content-type/actions/workflows/ci.yml?query=branch%3Amaster
-[coverage-image]: https://img.shields.io/codecov/c/gh/jshttp/content-type
-[coverage-url]: https://codecov.io/gh/jshttp/content-type
-[license-image]: http://img.shields.io/npm/l/content-type.svg?style=flat
+[package-url]: https://npmjs.org/package/call-bind-apply-helpers
+[npm-version-svg]: https://versionbadg.es/ljharb/call-bind-apply-helpers.svg
+[deps-svg]: https://david-dm.org/ljharb/call-bind-apply-helpers.svg
+[deps-url]: https://david-dm.org/ljharb/call-bind-apply-helpers
+[dev-deps-svg]: https://david-dm.org/ljharb/call-bind-apply-helpers/dev-status.svg
+[dev-deps-url]: https://david-dm.org/ljharb/call-bind-apply-helpers#info=devDependencies
+[npm-badge-png]: https://nodei.co/npm/call-bind-apply-helpers.png?downloads=true&stars=true
+[license-image]: https://img.shields.io/npm/l/call-bind-apply-helpers.svg
 [license-url]: LICENSE
+[downloads-image]: https://img.shields.io/npm/dm/call-bind-apply-helpers.svg
+[downloads-url]: https://npm-stat.com/charts.html?package=call-bind-apply-helpers
+[codecov-image]: https://codecov.io/gh/ljharb/call-bind-apply-helpers/branch/main/graphs/badge.svg
+[codecov-url]: https://app.codecov.io/gh/ljharb/call-bind-apply-helpers/
+[actions-image]: https://img.shields.io/endpoint?url=https://github-actions-badge-u3jn4tfpocch.runkit.sh/ljharb/call-bind-apply-helpers
+[actions-url]: https://github.com/ljharb/call-bind-apply-helpers/actions
