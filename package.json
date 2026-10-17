@@ -1,29 +1,23 @@
 {
-  "name": "wrappy",
-  "version": "1.0.2",
-  "description": "Callback wrapping utility",
-  "main": "wrappy.js",
-  "files": [
-    "wrappy.js"
-  ],
-  "directories": {
-    "test": "test"
-  },
-  "dependencies": {},
-  "devDependencies": {
-    "tap": "^2.3.1"
-  },
+  "name": "mal-food-nutrition-app",
+  "version": "1.0.0",
+  "description": "Mal-Food Nutrition API (Express + SQLite)",
+  "main": "server.js",
   "scripts": {
-    "test": "tap --coverage test/*.js"
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "echo \"No test specified\" && exit 0"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/npm/wrappy"
+  "engines": {
+    "node": "18.x"
   },
-  "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/npm/wrappy/issues"
-  },
-  "homepage": "https://github.com/npm/wrappy"
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^8.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
+    "express": "^4.18.2",
+    "express-rate-limit": "^6.7.0",
+    "jsonwebtoken": "^9.0.0"
+  }
 }
