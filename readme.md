@@ -1,61 +1,64 @@
-# object-assign [![Build Status](https://travis-ci.org/sindresorhus/object-assign.svg?branch=master)](https://travis-ci.org/sindresorhus/object-assign)
+# strip-json-comments [![Build Status](https://travis-ci.org/sindresorhus/strip-json-comments.svg?branch=master)](https://travis-ci.org/sindresorhus/strip-json-comments)
 
-> ES2015 [`Object.assign()`](http://www.2ality.com/2014/01/object-assign.html) [ponyfill](https://ponyfill.com)
+> Strip comments from JSON. Lets you use comments in your JSON files!
 
+This is now possible:
 
-## Use the built-in
+```js
+{
+	// rainbows
+	"unicorn": /* ❤ */ "cake"
+}
+```
 
-Node.js 4 and up, as well as every evergreen browser (Chrome, Edge, Firefox, Opera, Safari),
-support `Object.assign()` :tada:. If you target only those environments, then by all
-means, use `Object.assign()` instead of this package.
+It will replace single-line comments `//` and multi-line comments `/**/` with whitespace. This allows JSON error positions to remain as close as possible to the original source.
+
+Also available as a [gulp](https://github.com/sindresorhus/gulp-strip-json-comments)/[grunt](https://github.com/sindresorhus/grunt-strip-json-comments)/[broccoli](https://github.com/sindresorhus/broccoli-strip-json-comments) plugin.
 
 
 ## Install
 
 ```
-$ npm install --save object-assign
+$ npm install --save strip-json-comments
 ```
 
 
 ## Usage
 
 ```js
-const objectAssign = require('object-assign');
+const json = '{/*rainbows*/"unicorn":"cake"}';
 
-objectAssign({foo: 0}, {bar: 1});
-//=> {foo: 0, bar: 1}
-
-// multiple sources
-objectAssign({foo: 0}, {bar: 1}, {baz: 2});
-//=> {foo: 0, bar: 1, baz: 2}
-
-// overwrites equal keys
-objectAssign({foo: 0}, {foo: 1}, {foo: 2});
-//=> {foo: 2}
-
-// ignores null and undefined sources
-objectAssign({foo: 0}, null, {bar: 1}, undefined);
-//=> {foo: 0, bar: 1}
+JSON.parse(stripJsonComments(json));
+//=> {unicorn: 'cake'}
 ```
 
 
 ## API
 
-### objectAssign(target, [source, ...])
+### stripJsonComments(input, [options])
 
-Assigns enumerable own properties of `source` objects to the `target` object and returns the `target` object. Additional `source` objects will overwrite previous ones.
+#### input
 
+Type: `string`
 
-## Resources
+Accepts a string with JSON and returns a string without comments.
 
-- [ES2015 spec - Object.assign](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-object.assign)
+#### options
+
+##### whitespace
+
+Type: `boolean`  
+Default: `true`
+
+Replace comments with whitespace instead of stripping them entirely.
 
 
 ## Related
 
-- [deep-assign](https://github.com/sindresorhus/deep-assign) - Recursive `Object.assign()`
+- [strip-json-comments-cli](https://github.com/sindresorhus/strip-json-comments-cli) - CLI for this module
+- [strip-css-comments](https://github.com/sindresorhus/strip-css-comments) - Strip comments from CSS
 
 
 ## License
 
-MIT © [Sindre Sorhus](https://sindresorhus.com)
+MIT © [Sindre Sorhus](http://sindresorhus.com)
