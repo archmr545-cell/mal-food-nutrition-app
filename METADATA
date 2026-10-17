@@ -1,176 +1,149 @@
-Metadata-Version: 2.5
-Name: idna
-Version: 3.20
-Summary: Internationalized Domain Names in Applications (IDNA)
-Author-email: Kim Davies <kim+pypi@gumleaf.org>
-Requires-Python: >=3.9
-Description-Content-Type: text/markdown
-License-Expression: BSD-3-Clause
+Metadata-Version: 2.4
+Name: multidict
+Version: 6.9.1
+Summary: multidict implementation
+Home-page: https://github.com/aio-libs/multidict
+Author: Andrew Svetlov
+Author-email: andrew.svetlov@gmail.com
+License: Apache License 2.0
+Project-URL: Chat: Matrix, https://matrix.to/#/#aio-libs:matrix.org
+Project-URL: Chat: Matrix Space, https://matrix.to/#/#aio-libs-space:matrix.org
+Project-URL: CI: GitHub, https://github.com/aio-libs/multidict/actions
+Project-URL: Code of Conduct, https://github.com/aio-libs/.github/blob/master/CODE_OF_CONDUCT.md
+Project-URL: Coverage: codecov, https://codecov.io/github/aio-libs/multidict
+Project-URL: Docs: Changelog, https://multidict.aio-libs.org/en/latest/changes/
+Project-URL: Docs: RTD, https://multidict.aio-libs.org
+Project-URL: GitHub: issues, https://github.com/aio-libs/multidict/issues
+Project-URL: GitHub: repo, https://github.com/aio-libs/multidict
 Classifier: Development Status :: 5 - Production/Stable
 Classifier: Intended Audience :: Developers
-Classifier: Intended Audience :: System Administrators
-Classifier: Operating System :: OS Independent
 Classifier: Programming Language :: Python
 Classifier: Programming Language :: Python :: 3
-Classifier: Programming Language :: Python :: 3 :: Only
-Classifier: Programming Language :: Python :: 3.9
 Classifier: Programming Language :: Python :: 3.10
 Classifier: Programming Language :: Python :: 3.11
 Classifier: Programming Language :: Python :: 3.12
 Classifier: Programming Language :: Python :: 3.13
 Classifier: Programming Language :: Python :: 3.14
-Classifier: Programming Language :: Python :: 3.15
-Classifier: Programming Language :: Python :: Implementation :: CPython
-Classifier: Programming Language :: Python :: Implementation :: PyPy
-Classifier: Topic :: Internet :: Name Service (DNS)
-Classifier: Topic :: Software Development :: Libraries :: Python Modules
-Classifier: Topic :: Utilities
-License-File: LICENSE.md
-Requires-Dist: ruff >= 0.16.0 ; extra == "all"
-Requires-Dist: mypy >= 1.11.2 ; extra == "all"
-Requires-Dist: ty >= 0.0.37 ; extra == "all"
-Requires-Dist: pytest >= 8.3.2 ; extra == "all"
-Requires-Dist: hypothesis >= 6.141.1 ; extra == "all"
-Requires-Dist: coverage >= 7.10.0 ; extra == "all"
-Project-URL: Changelog, https://github.com/kjd/idna/blob/master/HISTORY.md
-Project-URL: Issue tracker, https://github.com/kjd/idna/issues
-Project-URL: Source, https://github.com/kjd/idna
-Provides-Extra: all
-Import-Name: idna
+Requires-Python: >=3.10
+Description-Content-Type: text/x-rst
+License-File: LICENSE
+Requires-Dist: typing-extensions>=4.1.0; python_version < "3.11"
+Dynamic: license-file
 
-# Internationalized Domain Names in Applications (IDNA)
+=========
+multidict
+=========
 
-Support for [Internationalized Domain Names in Applications
-(IDNA)](https://tools.ietf.org/html/rfc5891) and [Unicode IDNA
-Compatibility Processing](https://unicode.org/reports/tr46/). It
-supersedes the standard library's `encodings.idna`, which only
-implements the 2003 specification, offering broader script coverage and
-limiting domains with known security vulnerabilities.
+.. image:: https://github.com/aio-libs/multidict/actions/workflows/ci-cd.yml/badge.svg
+   :target: https://github.com/aio-libs/multidict/actions
+   :alt: GitHub status for master branch
 
-## Usage
+.. image:: https://codecov.io/gh/aio-libs/multidict/branch/master/graph/badge.svg?flag=pytest
+   :target: https://codecov.io/gh/aio-libs/multidict?flags[]=pytest
+   :alt: Coverage metrics
 
-Package may be installed from [PyPI](https://pypi.org/project/idna/) via
-the typical methods (e.g. `python3 -m pip install idna`)
+.. image:: https://img.shields.io/pypi/v/multidict.svg
+   :target: https://pypi.org/project/multidict
+   :alt: PyPI
 
-For typical usage, the `encode` and `decode` functions will take a
-domain name argument and perform a conversion to ASCII-compatible encoding
-(known as A-labels), or to Unicode strings (known as U-labels)
-respectively.
+.. image:: https://readthedocs.org/projects/multidict/badge/?version=latest
+   :target: https://multidict.aio-libs.org
+   :alt: Read The Docs build status badge
 
-```pycon
->>> import idna
->>> idna.encode('ドメイン.テスト')
-b'xn--eckwd4c7c.xn--zckzah'
->>> print(idna.decode('xn--eckwd4c7c.xn--zckzah'))
-ドメイン.テスト
-```
+.. image:: https://img.shields.io/endpoint?url=https://codspeed.io/badge.json
+   :target: https://codspeed.io/aio-libs/multidict
+   :alt: CodSpeed
 
-Conversions can be applied at a per-label basis using the `ulabel` or
-`alabel` functions for specialized use cases.
+.. image:: https://img.shields.io/pypi/pyversions/multidict.svg
+   :target: https://pypi.org/project/multidict
+   :alt: Python versions
 
+.. image:: https://img.shields.io/matrix/aio-libs:matrix.org?label=Discuss%20on%20Matrix%20at%20%23aio-libs%3Amatrix.org&logo=matrix&server_fqdn=matrix.org&style=flat
+   :target: https://matrix.to/#/%23aio-libs:matrix.org
+   :alt: Matrix Room — #aio-libs:matrix.org
 
-### Compatibility Mapping (UTS #46)
+.. image:: https://img.shields.io/matrix/aio-libs-space:matrix.org?label=Discuss%20on%20Matrix%20at%20%23aio-libs-space%3Amatrix.org&logo=matrix&server_fqdn=matrix.org&style=flat
+   :target: https://matrix.to/#/%23aio-libs-space:matrix.org
+   :alt: Matrix Space — #aio-libs-space:matrix.org
 
-This library provides support for [Unicode IDNA Compatibility
-Processing](https://unicode.org/reports/tr46/) which normalizes input from
-different potential ways a user may input a domain prior to performing the IDNA
-conversion operations. This functionality, known as a
-[mapping](https://tools.ietf.org/html/rfc5895), is considered by the
-specification to be a local user-interface issue distinct from IDNA
-conversion functionality.
+Multidict is dict-like collection of *key-value pairs* where key
+might occur more than once in the container.
 
-For example, "Königsgäßchen" is not a permissible label as capital letters
-are not allowed. UTS #46 will convert this into lower case prior to applying
-the IDNA conversion.
+Introduction
+------------
 
-```pycon
->>> import idna
->>> idna.encode('Königsgäßchen')
-...
-idna.core.InvalidCodepoint: Codepoint U+004B at position 1 of 'Königsgäßchen' not allowed
->>> idna.encode('Königsgäßchen', uts46=True)
-b'xn--knigsgchen-b4a3dun'
->>> idna.decode('xn--knigsgchen-b4a3dun')
-'königsgäßchen'
-```
+*HTTP Headers* and *URL query string* require specific data structure:
+*multidict*. It behaves mostly like a regular ``dict`` but it may have
+several *values* for the same *key* and *preserves insertion ordering*.
 
-When performing a decode operation for display purposes, `decode()`
-accepts a `display=True` argument that leaves any `xn--` label that
-fails to decode unchanged. This is useful for user interface display
-where a domain is in use, the A-label form can be presented when it
-is not a valid IDN.
+The *key* is ``str`` (or ``istr`` for case-insensitive dictionaries).
 
+``multidict`` has four multidict classes:
+``MultiDict``, ``MultiDictProxy``, ``CIMultiDict``
+and ``CIMultiDictProxy``.
 
-## Exceptions
+Immutable proxies (``MultiDictProxy`` and
+``CIMultiDictProxy``) provide a dynamic view for the
+proxied multidict, the view reflects underlying collection changes. They
+implement the ``collections.abc.Mapping`` interface.
 
-All errors raised during conversion derive from the `idna.IDNAError`
-base class. The more specific exceptions are:
+Regular mutable (``MultiDict`` and ``CIMultiDict``) classes
+implement ``collections.abc.MutableMapping`` and allows them to change
+their own content.
 
-* `idna.IDNABidiError` — raised when a label contains an illegal
-  combination of left-to-right and right-to-left characters.
-* `idna.InvalidCodepoint` — raised when a label contains a codepoint
-  that is INVALID for IDNA.
-* `idna.InvalidCodepointContext` — raised when a CONTEXTO or CONTEXTJ
-  codepoint appears in a position whose contextual requirements are
-  not satisfied.
+*Case insensitive* (``CIMultiDict`` and
+``CIMultiDictProxy``) assume the *keys* are case
+insensitive, e.g.
 
-Exceptions carry machine-readable attributes so that applications do
-not need to parse the message: `code` is a short, stable identifier
-for the rule that failed (such as `disallowed_codepoint` or
-`label_too_long`); and, when the failure can be attributed to a
-particular character, `text` (the label or domain being validated),
-`codepoint` (the offending codepoint as an integer) and `position`
-are set. 
+.. code-block:: python
+
+   >>> dct = CIMultiDict(key='val')
+   >>> 'Key' in dct
+   True
+   >>> dct['Key']
+   'val'
+
+*Keys* should be ``str`` or ``istr`` instances.
+
+The library has optional C Extensions for speed.
 
 
-## Command-line tool
+License
+-------
 
-The package supports command-line usage to convert domain names
-between their Unicode and ASCII-compatible forms. It can be run either
-as a module (`python3 -m idna`) or, once installed (such as with `uv
-tool` or `pipx`), via the `idna` script:
+Apache 2
 
-```bash
-$ uv tool install idna
-$ idna xn--e1afmkfd.xn--p1ai
-пример.рф
-$ idna пример.рф
-xn--e1afmkfd.xn--p1ai
-```
+Library Installation
+--------------------
 
-Mode can be specified with `-e`/`--encode` or `-d`/`--decode`, otherwise
-it will be chosen automatically based on the first input. Multiple
-domains can be supplied either as arguments or through standard input.
-UTS #46 mapping is applied by default, which lets the tool accept
-inputs that aren't strictly valid IDNA 2008 by normalising them first,
-pass `--strict` to disable UTS #46.
+.. code-block:: bash
 
-Conversion failures are reported on stderr together with the
-offending input; processing continues with the remaining domains and
-the tool exits with a non-zero status if any conversion failed.
+   $ pip install multidict
 
+The library is Python 3 only!
 
-## Additional Notes
+PyPI contains binary wheels for Linux, Windows and MacOS.  If you want to install
+``multidict`` on another operating system (or *Alpine Linux* inside a Docker) the
+tarball will be used to compile the library from source.  It requires a C compiler and
+Python headers to be installed.
 
-* **Python version support**. This library supports Python 3.9 and higher.
-  As this library serves as a low-level toolkit for a variety of
-  applications, we strive to support all versions of Python that are
-  not beyond end-of-life. Free-threaded Python is also supported,
-  as the library holds no mutable global state the functions can be
-  called concurrently from multiple threads.
+To skip the compilation, please use the `MULTIDICT_NO_EXTENSIONS` environment variable,
+e.g.:
 
-* **Unicode version**. The IDNA and UTS #46 lookup tables are generated
-  from a specific Unicode release. Some Unicode data depends on the
-  running Python's `unicodedata` module, so on an older Python a
-  character new to Unicode may be rejected as unknown even if this
-  library knows about it.
+.. code-block:: bash
 
-* **Emoji**. It is an occasional request to support emoji domains in
-  this library. Encoding of symbols like emoji is expressly prohibited by
-  the IDNA technical standard, and emoji domains are broadly phased
-  out across the domain industry due to associated security risks.
+   $ MULTIDICT_NO_EXTENSIONS=1 pip install multidict
 
-* **Regenerating lookup tables**. The IDNA and UTS #46 functionality
-  relies upon pre-calculated lookup tables, generated using the
-  `idna-data` script in [`tools/`](tools/README.md).
+Please note, the pure Python (uncompiled) version is about 20-50 times slower depending on
+the usage scenario!!!
 
+For extension development, set the ``MULTIDICT_DEBUG_BUILD`` environment variable to compile
+the extensions in debug mode:
+
+.. code-block:: console
+
+   $ MULTIDICT_DEBUG_BUILD=1 pip install multidict
+
+Changelog
+---------
+See `RTD page <http://multidict.aio-libs.org/en/latest/changes>`_.

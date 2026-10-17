@@ -1,47 +1,60 @@
-from .core import (
-    IDNABidiError,
-    IDNAError,
-    InvalidCodepoint,
-    InvalidCodepointContext,
-    alabel,
-    check_bidi,
-    check_hyphen_ok,
-    check_initial_combiner,
-    check_label,
-    check_nfc,
-    decode,
-    encode,
-    ulabel,
-    uts46_remap,
-    valid_contextj,
-    valid_contexto,
-    valid_label_length,
-    valid_string_length,
-)
-from .idnadata import __version__ as unicode_version
-from .intranges import intranges_contain
-from .package_data import __version__
+"""
+Multidict implementation.
 
-__all__ = [
-    "__version__",
-    "unicode_version",
-    "IDNABidiError",
-    "IDNAError",
-    "InvalidCodepoint",
-    "InvalidCodepointContext",
-    "alabel",
-    "check_bidi",
-    "check_hyphen_ok",
-    "check_initial_combiner",
-    "check_label",
-    "check_nfc",
-    "decode",
-    "encode",
-    "intranges_contain",
-    "ulabel",
-    "uts46_remap",
-    "valid_contextj",
-    "valid_contexto",
-    "valid_label_length",
-    "valid_string_length",
-]
+HTTP Headers and URL query string require specific data structure:
+multidict. It behaves mostly like a dict but it can have
+several values for the same key.
+"""
+
+from typing import TYPE_CHECKING
+
+from ._abc import MultiMapping, MutableMultiMapping
+from ._compat import USE_EXTENSIONS
+
+__all__ = (
+    "CIMultiDict",
+    "CIMultiDictProxy",
+    "MultiDict",
+    "MultiDictProxy",
+    "MultiMapping",
+    "MutableMultiMapping",
+    "getversion",
+    "istr",
+    "upstr",
+)
+
+__version__ = "6.9.1"
+
+
+if TYPE_CHECKING or not USE_EXTENSIONS:
+    from ._multidict_py import (
+        CIMultiDict,
+        CIMultiDictProxy,
+        MultiDict,
+        MultiDictProxy,
+        getversion,
+        istr,
+    )
+else:
+    from collections.abc import ItemsView, KeysView, ValuesView
+
+    from ._multidict import (
+        CIMultiDict,
+        CIMultiDictProxy,
+        MultiDict,
+        MultiDictProxy,
+        _ItemsView,
+        _KeysView,
+        _ValuesView,
+        getversion,
+        istr,
+    )
+
+    MultiMapping.register(MultiDictProxy)
+    MutableMultiMapping.register(MultiDict)
+    KeysView.register(_KeysView)
+    ItemsView.register(_ItemsView)
+    ValuesView.register(_ValuesView)
+
+
+upstr = istr
