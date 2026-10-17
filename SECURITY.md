@@ -1,3 +1,5 @@
-# Security
+## Security contact information
 
-Please email [@ljharb](https://github.com/ljharb) or see https://tidelift.com/security if you have a potential security vulnerability to report.
+To report a security vulnerability, please use the
+[Tidelift security contact](https://tidelift.com/security).
+Tidelift will coordinate the fix and disclosure.
