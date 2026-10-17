@@ -1,17 +1,46 @@
-import {IncomingMessage} from 'http';
-
+/*!
+ * content-type
+ * Copyright(c) 2015 Douglas Christopher Wilson
+ * MIT Licensed
+ */
 /**
-Mimic a [Node.js HTTP response stream](https://nodejs.org/api/http.html#http_class_http_incomingmessage)
-
-Makes `toStream` include the properties from `fromStream`.
-
-@param fromStream - The stream to copy the properties from.
-@param toStream - The stream to copy the properties to.
-@return The same object as `toStream`.
-*/
-declare function mimicResponse<T extends NodeJS.ReadableStream>(
-	fromStream: IncomingMessage, // eslint-disable-line @typescript-eslint/prefer-readonly-parameter-types
-	toStream: T,
-): T & IncomingMessage;
-
-export = mimicResponse;
+ * The content type object contains a type string and optional parameters.
+ */
+export interface ContentType {
+    type: string;
+    index: number;
+    parameters: Record<string, string>;
+}
+/**
+ * Format an object into a `Content-Type` header.
+ */
+export declare function format(obj: Partial<ContentType>): string;
+/**
+ * Options for parsing a `Content-Type` header.
+ */
+export interface ParseOptions {
+    /**
+     * Exit early on the first semicolon, returning only the type.
+     * This is useful for parsing the MIME from `Content-Type` headers.
+     *
+     * @default false
+     */
+    parameters?: boolean;
+    /**
+     * Exits early on a comma, returning the first value and parameters.
+     * This is useful for parsing `Accept` headers.
+     *
+     * @default false
+     */
+    comma?: boolean;
+    /**
+     * The index to start parsing from.
+     *
+     * @default 0
+     */
+    start?: number;
+}
+/**
+ * Parse a `Content-Type` header.
+ */
+export declare function parse(header: string, options?: ParseOptions): ContentType;

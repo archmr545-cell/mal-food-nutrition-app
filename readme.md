@@ -1,78 +1,61 @@
-# mimic-response [![Build Status](https://travis-ci.com/sindresorhus/mimic-response.svg?branch=master)](https://travis-ci.com/sindresorhus/mimic-response)
+# object-assign [![Build Status](https://travis-ci.org/sindresorhus/object-assign.svg?branch=master)](https://travis-ci.org/sindresorhus/object-assign)
 
-> Mimic a [Node.js HTTP response stream](https://nodejs.org/api/http.html#http_class_http_incomingmessage)
+> ES2015 [`Object.assign()`](http://www.2ality.com/2014/01/object-assign.html) [ponyfill](https://ponyfill.com)
+
+
+## Use the built-in
+
+Node.js 4 and up, as well as every evergreen browser (Chrome, Edge, Firefox, Opera, Safari),
+support `Object.assign()` :tada:. If you target only those environments, then by all
+means, use `Object.assign()` instead of this package.
+
 
 ## Install
 
 ```
-$ npm install mimic-response
+$ npm install --save object-assign
 ```
+
 
 ## Usage
 
 ```js
-const stream = require('stream');
-const mimicResponse = require('mimic-response');
+const objectAssign = require('object-assign');
 
-const responseStream = getHttpResponseStream();
-const myStream = new stream.PassThrough();
+objectAssign({foo: 0}, {bar: 1});
+//=> {foo: 0, bar: 1}
 
-mimicResponse(responseStream, myStream);
+// multiple sources
+objectAssign({foo: 0}, {bar: 1}, {baz: 2});
+//=> {foo: 0, bar: 1, baz: 2}
 
-console.log(myStream.statusCode);
-//=> 200
+// overwrites equal keys
+objectAssign({foo: 0}, {foo: 1}, {foo: 2});
+//=> {foo: 2}
+
+// ignores null and undefined sources
+objectAssign({foo: 0}, null, {bar: 1}, undefined);
+//=> {foo: 0, bar: 1}
 ```
+
 
 ## API
 
-### mimicResponse(from, to)
+### objectAssign(target, [source, ...])
 
-**Note #1:** The `from.destroy(error)` function is not proxied. You have to call it manually:
+Assigns enumerable own properties of `source` objects to the `target` object and returns the `target` object. Additional `source` objects will overwrite previous ones.
 
-```js
-const stream = require('stream');
-const mimicResponse = require('mimic-response');
 
-const responseStream = getHttpResponseStream();
+## Resources
 
-const myStream = new stream.PassThrough({
-	destroy(error, callback) {
-		responseStream.destroy();
+- [ES2015 spec - Object.assign](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-object.assign)
 
-		callback(error);
-	}
-});
-
-myStream.destroy();
-```
-
-Please note that `myStream` and `responseStream` never throws. The error is passed to the request instead.
-
-#### from
-
-Type: `Stream`
-
-[Node.js HTTP response stream.](https://nodejs.org/api/http.html#http_class_http_incomingmessage)
-
-#### to
-
-Type: `Stream`
-
-Any stream.
 
 ## Related
 
-- [mimic-fn](https://github.com/sindresorhus/mimic-fn) - Make a function mimic another one
-- [clone-response](https://github.com/lukechilds/clone-response) - Clone a Node.js response stream
+- [deep-assign](https://github.com/sindresorhus/deep-assign) - Recursive `Object.assign()`
 
----
 
-<div align="center">
-	<b>
-		<a href="https://tidelift.com/subscription/pkg/npm-mimic-response?utm_source=npm-mimic-response&utm_medium=referral&utm_campaign=readme">Get professional support for this package with a Tidelift subscription</a>
-	</b>
-	<br>
-	<sub>
-		Tidelift helps make open source sustainable for maintainers while giving companies<br>assurances about security, maintenance, and licensing for their dependencies.
-	</sub>
-</div>
+## License
+
+MIT © [Sindre Sorhus](https://sindresorhus.com)
