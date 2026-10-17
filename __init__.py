@@ -1,59 +1,54 @@
 # SPDX-License-Identifier: MIT
 
-"""
-Classes Without Boilerplate
-"""
-
-from functools import partial
-from typing import Callable, Literal, Protocol
-
-from . import converters, exceptions, filters, setters, validators
-from ._cmp import cmp_using
-from ._config import get_run_validators, set_run_validators
-from ._funcs import asdict, assoc, astuple, has, resolve_types
-from ._make import (
+from attr import (
     NOTHING,
     Attribute,
+    AttrsInstance,
     Converter,
     Factory,
-    _Nothing,
-    attrib,
-    attrs,
+    NothingType,
+    _make_getattr,
+    assoc,
+    cmp_using,
+    define,
     evolve,
+    field,
     fields,
     fields_dict,
+    frozen,
+    has,
     make_class,
+    mutable,
+    resolve_types,
     validate,
 )
-from ._next_gen import define, field, frozen, mutable
-from ._version_info import VersionInfo
+from attr._make import ClassProps
+from attr._next_gen import asdict, astuple, inspect
 
+from . import converters, exceptions, filters, setters, validators
 
-s = attributes = attrs
-ib = attr = attrib
-dataclass = partial(attrs, auto_attribs=True)  # happy Easter ;)
-
-
-class AttrsInstance(Protocol):
-    pass
-
-
-NothingType = Literal[_Nothing.NOTHING]
 
 __all__ = [
     "NOTHING",
     "Attribute",
     "AttrsInstance",
+    "ClassProps",
     "Converter",
     "Factory",
     "NothingType",
+    "__author__",
+    "__copyright__",
+    "__description__",
+    "__doc__",
+    "__email__",
+    "__license__",
+    "__title__",
+    "__url__",
+    "__version__",
+    "__version_info__",
     "asdict",
     "assoc",
     "astuple",
-    "attr",
-    "attrib",
-    "attributes",
-    "attrs",
     "cmp_using",
     "converters",
     "define",
@@ -64,41 +59,14 @@ __all__ = [
     "fields_dict",
     "filters",
     "frozen",
-    "get_run_validators",
     "has",
-    "ib",
+    "inspect",
     "make_class",
     "mutable",
     "resolve_types",
-    "s",
-    "set_run_validators",
     "setters",
     "validate",
     "validators",
 ]
-
-
-def _make_getattr(mod_name: str) -> Callable:
-    """
-    Create a metadata proxy for packaging information that uses *mod_name* in
-    its warnings and errors.
-    """
-
-    def __getattr__(name: str) -> str:
-        if name not in ("__version__", "__version_info__"):
-            msg = f"module {mod_name} has no attribute {name}"
-            raise AttributeError(msg)
-
-        from importlib.metadata import metadata
-
-        meta = metadata("attrs")
-
-        if name == "__version_info__":
-            return VersionInfo._from_version_string(meta["version"])
-
-        return meta["version"]
-
-    return __getattr__
-
 
 __getattr__ = _make_getattr(__name__)

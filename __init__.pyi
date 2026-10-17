@@ -1,203 +1,104 @@
-import enum
 import sys
 
 from typing import (
     Any,
     Callable,
-    Generic,
-    Literal,
     Mapping,
-    Protocol,
     Sequence,
-    TypeVar,
     overload,
+    TypeVar,
 )
 
-# `import X as X` is required to make these public
-from . import converters as converters
-from . import exceptions as exceptions
-from . import filters as filters
-from . import setters as setters
-from . import validators as validators
-from ._cmp import cmp_using as cmp_using
-from ._typing_compat import AttrsInstance_
-from ._version_info import VersionInfo
-from attrs import (
-    define as define,
-    field as field,
-    mutable as mutable,
-    frozen as frozen,
-    _EqOrderType,
-    _ValidatorType,
-    _ConverterType,
-    _ReprArgType,
-    _OnSetAttrType,
-    _OnSetAttrArgType,
-    _FieldTransformer,
-    _ValidatorArgType,
-)
-
-if sys.version_info >= (3, 10):
-    from typing import TypeGuard, TypeAlias
-else:
-    from typing_extensions import TypeGuard, TypeAlias
+# Because we need to type our own stuff, we have to make everything from
+# attr explicitly public too.
+from attr import __author__ as __author__
+from attr import __copyright__ as __copyright__
+from attr import __description__ as __description__
+from attr import __email__ as __email__
+from attr import __license__ as __license__
+from attr import __title__ as __title__
+from attr import __url__ as __url__
+from attr import __version__ as __version__
+from attr import __version_info__ as __version_info__
+from attr import assoc as assoc
+from attr import Attribute as Attribute
+from attr import AttrsInstance as AttrsInstance
+from attr import cmp_using as cmp_using
+from attr import converters as converters
+from attr import Converter as Converter
+from attr import evolve as evolve
+from attr import exceptions as exceptions
+from attr import Factory as Factory
+from attr import fields as fields
+from attr import fields_dict as fields_dict
+from attr import filters as filters
+from attr import has as has
+from attr import make_class as make_class
+from attr import NOTHING as NOTHING
+from attr import resolve_types as resolve_types
+from attr import setters as setters
+from attr import validate as validate
+from attr import validators as validators
+from attr import attrib, asdict as asdict, astuple as astuple
+from attr import NothingType as NothingType
 
 if sys.version_info >= (3, 11):
     from typing import dataclass_transform
 else:
     from typing_extensions import dataclass_transform
 
-__version__: str
-__version_info__: VersionInfo
-__title__: str
-__description__: str
-__url__: str
-__uri__: str
-__author__: str
-__email__: str
-__license__: str
-__copyright__: str
-
 _T = TypeVar("_T")
 _C = TypeVar("_C", bound=type)
 
-_FilterType = Callable[["Attribute[_T]", _T], bool]
-
-# We subclass this here to keep the protocol's qualified name clean.
-class AttrsInstance(AttrsInstance_, Protocol):
-    pass
-
-_A = TypeVar("_A", bound=type[AttrsInstance])
-
-class _Nothing(enum.Enum):
-    NOTHING = enum.auto()
-
-NOTHING = _Nothing.NOTHING
-NothingType: TypeAlias = Literal[_Nothing.NOTHING]
-
-# NOTE: Factory lies about its return type to make this possible:
-# `x: List[int] # = Factory(list)`
-# Work around mypy issue #4554 in the common case by using an overload.
+_EqOrderType = bool | Callable[[Any], Any]
+_ValidatorType = Callable[[Any, "Attribute[_T]", _T], Any]
+_CallableConverterType = Callable[[Any], Any]
+_ConverterType = _CallableConverterType | Converter[Any, Any]
+_ReprType = Callable[[Any], str]
+_ReprArgType = bool | _ReprType
+_OnSetAttrType = Callable[[Any, "Attribute[Any]", Any], Any]
+_OnSetAttrArgType = _OnSetAttrType | list[_OnSetAttrType] | setters._NoOpType
+_FieldTransformer = Callable[
+    [type, list["Attribute[Any]"]], list["Attribute[Any]"]
+]
+# FIXME: in reality, if multiple validators are passed they must be in a list
+# or tuple, but those are invariant and so would prevent subtypes of
+# _ValidatorType from working when passed in a list or tuple.
+_ValidatorArgType = _ValidatorType[_T] | Sequence[_ValidatorType[_T]]
 
 @overload
-def Factory(factory: Callable[[], _T]) -> _T: ...
-@overload
-def Factory(
-    factory: Callable[[Any], _T],
-    takes_self: Literal[True],
-) -> _T: ...
-@overload
-def Factory(
-    factory: Callable[[], _T],
-    takes_self: Literal[False],
-) -> _T: ...
-
-In = TypeVar("In")
-Out = TypeVar("Out")
-
-class Converter(Generic[In, Out]):
-    @overload
-    def __init__(self, converter: Callable[[In], Out]) -> None: ...
-    @overload
-    def __init__(
-        self,
-        converter: Callable[[In, AttrsInstance, Attribute], Out],
-        *,
-        takes_self: Literal[True],
-        takes_field: Literal[True],
-    ) -> None: ...
-    @overload
-    def __init__(
-        self,
-        converter: Callable[[In, Attribute], Out],
-        *,
-        takes_field: Literal[True],
-    ) -> None: ...
-    @overload
-    def __init__(
-        self,
-        converter: Callable[[In, AttrsInstance], Out],
-        *,
-        takes_self: Literal[True],
-    ) -> None: ...
-
-class Attribute(Generic[_T]):
-    name: str
-    default: _T | None
-    validator: _ValidatorType[_T] | None
-    repr: _ReprArgType
-    cmp: _EqOrderType
-    eq: _EqOrderType
-    order: _EqOrderType
-    hash: bool | None
-    init: bool
-    converter: Converter | None
-    metadata: dict[Any, Any]
-    type: type[_T] | None
-    kw_only: bool
-    on_setattr: _OnSetAttrType
-    alias: str | None
-
-    def evolve(self, **changes: Any) -> "Attribute[Any]": ...
-
-# NOTE: We had several choices for the annotation to use for type arg:
-# 1) Type[_T]
-#   - Pros: Handles simple cases correctly
-#   - Cons: Might produce less informative errors in the case of conflicting
-#     TypeVars e.g. `attr.ib(default='bad', type=int)`
-# 2) Callable[..., _T]
-#   - Pros: Better error messages than #1 for conflicting TypeVars
-#   - Cons: Terrible error messages for validator checks.
-#   e.g. attr.ib(type=int, validator=validate_str)
-#        -> error: Cannot infer function type argument
-# 3) type (and do all of the work in the mypy plugin)
-#   - Pros: Simple here, and we could customize the plugin with our own errors.
-#   - Cons: Would need to write mypy plugin code to handle all the cases.
-# We chose option #1.
-
-# `attr` lies about its return type to make the following possible:
-#     attr()    -> Any
-#     attr(8)   -> int
-#     attr(validator=<some callable>)  -> Whatever the callable expects.
-# This makes this type of assignments possible:
-#     x: int = attr(8)
-#
-# This form catches explicit None or no default but with no other arguments
-# returns Any.
-@overload
-def attrib(
+def field(
+    *,
     default: None = ...,
     validator: None = ...,
     repr: _ReprArgType = ...,
-    cmp: _EqOrderType | None = ...,
     hash: bool | None = ...,
     init: bool = ...,
     metadata: Mapping[Any, Any] | None = ...,
-    type: None = ...,
     converter: None = ...,
     factory: None = ...,
     kw_only: bool | None = ...,
-    eq: _EqOrderType | None = ...,
-    order: _EqOrderType | None = ...,
+    eq: bool | None = ...,
+    order: bool | None = ...,
     on_setattr: _OnSetAttrArgType | None = ...,
     alias: str | None = ...,
+    type: type | None = ...,
 ) -> Any: ...
 
 # This form catches an explicit None or no default and infers the type from the
 # other arguments.
 @overload
-def attrib(
+def field(
+    *,
     default: None = ...,
     validator: _ValidatorArgType[_T] | None = ...,
     repr: _ReprArgType = ...,
-    cmp: _EqOrderType | None = ...,
     hash: bool | None = ...,
     init: bool = ...,
     metadata: Mapping[Any, Any] | None = ...,
-    type: type[_T] | None = ...,
     converter: _ConverterType
     | list[_ConverterType]
-    | tuple[_ConverterType]
+    | tuple[_ConverterType, ...]
     | None = ...,
     factory: Callable[[], _T] | None = ...,
     kw_only: bool | None = ...,
@@ -205,22 +106,22 @@ def attrib(
     order: _EqOrderType | None = ...,
     on_setattr: _OnSetAttrArgType | None = ...,
     alias: str | None = ...,
+    type: type | None = ...,
 ) -> _T: ...
 
 # This form catches an explicit default argument.
 @overload
-def attrib(
+def field(
+    *,
     default: _T,
     validator: _ValidatorArgType[_T] | None = ...,
     repr: _ReprArgType = ...,
-    cmp: _EqOrderType | None = ...,
     hash: bool | None = ...,
     init: bool = ...,
     metadata: Mapping[Any, Any] | None = ...,
-    type: type[_T] | None = ...,
     converter: _ConverterType
     | list[_ConverterType]
-    | tuple[_ConverterType]
+    | tuple[_ConverterType, ...]
     | None = ...,
     factory: Callable[[], _T] | None = ...,
     kw_only: bool | None = ...,
@@ -228,22 +129,22 @@ def attrib(
     order: _EqOrderType | None = ...,
     on_setattr: _OnSetAttrArgType | None = ...,
     alias: str | None = ...,
+    type: type | None = ...,
 ) -> _T: ...
 
 # This form covers type=non-Type: e.g. forward references (str), Any
 @overload
-def attrib(
+def field(
+    *,
     default: _T | None = ...,
     validator: _ValidatorArgType[_T] | None = ...,
     repr: _ReprArgType = ...,
-    cmp: _EqOrderType | None = ...,
     hash: bool | None = ...,
     init: bool = ...,
     metadata: Mapping[Any, Any] | None = ...,
-    type: object = ...,
     converter: _ConverterType
     | list[_ConverterType]
-    | tuple[_ConverterType]
+    | tuple[_ConverterType, ...]
     | None = ...,
     factory: Callable[[], _T] | None = ...,
     kw_only: bool | None = ...,
@@ -251,15 +152,16 @@ def attrib(
     order: _EqOrderType | None = ...,
     on_setattr: _OnSetAttrArgType | None = ...,
     alias: str | None = ...,
+    type: type | None = ...,
 ) -> Any: ...
 @overload
-@dataclass_transform(order_default=True, field_specifiers=(attrib, field))
-def attrs(
+@dataclass_transform(field_specifiers=(attrib, field))
+def define(
     maybe_cls: _C,
+    *,
     these: dict[str, Any] | None = ...,
-    repr_ns: str | None = ...,
     repr: bool = ...,
-    cmp: _EqOrderType | None = ...,
+    unsafe_hash: bool | None = ...,
     hash: bool | None = ...,
     init: bool = ...,
     slots: bool = ...,
@@ -270,24 +172,22 @@ def attrs(
     kw_only: bool = ...,
     cache_hash: bool = ...,
     auto_exc: bool = ...,
-    eq: _EqOrderType | None = ...,
-    order: _EqOrderType | None = ...,
+    eq: bool | None = ...,
+    order: bool | None = ...,
     auto_detect: bool = ...,
-    collect_by_mro: bool = ...,
     getstate_setstate: bool | None = ...,
     on_setattr: _OnSetAttrArgType | None = ...,
     field_transformer: _FieldTransformer | None = ...,
     match_args: bool = ...,
-    unsafe_hash: bool | None = ...,
 ) -> _C: ...
 @overload
-@dataclass_transform(order_default=True, field_specifiers=(attrib, field))
-def attrs(
+@dataclass_transform(field_specifiers=(attrib, field))
+def define(
     maybe_cls: None = ...,
+    *,
     these: dict[str, Any] | None = ...,
-    repr_ns: str | None = ...,
     repr: bool = ...,
-    cmp: _EqOrderType | None = ...,
+    unsafe_hash: bool | None = ...,
     hash: bool | None = ...,
     init: bool = ...,
     slots: bool = ...,
@@ -298,38 +198,25 @@ def attrs(
     kw_only: bool = ...,
     cache_hash: bool = ...,
     auto_exc: bool = ...,
-    eq: _EqOrderType | None = ...,
-    order: _EqOrderType | None = ...,
+    eq: bool | None = ...,
+    order: bool | None = ...,
     auto_detect: bool = ...,
-    collect_by_mro: bool = ...,
     getstate_setstate: bool | None = ...,
     on_setattr: _OnSetAttrArgType | None = ...,
     field_transformer: _FieldTransformer | None = ...,
     match_args: bool = ...,
-    unsafe_hash: bool | None = ...,
 ) -> Callable[[_C], _C]: ...
-def fields(cls: type[AttrsInstance] | AttrsInstance) -> Any: ...
-def fields_dict(cls: type[AttrsInstance]) -> dict[str, Attribute[Any]]: ...
-def validate(inst: AttrsInstance) -> None: ...
-def resolve_types(
-    cls: _A,
-    globalns: dict[str, Any] | None = ...,
-    localns: dict[str, Any] | None = ...,
-    attribs: list[Attribute[Any]] | None = ...,
-    include_extras: bool = ...,
-) -> _A: ...
 
-# TODO: add support for returning a proper attrs class from the mypy plugin
-# we use Any instead of _CountingAttr so that e.g. `make_class('Foo',
-# [attr.ib()])` is valid
-def make_class(
-    name: str,
-    attrs: list[str] | tuple[str, ...] | dict[str, Any],
-    bases: tuple[type, ...] = ...,
-    class_body: dict[str, Any] | None = ...,
-    repr_ns: str | None = ...,
+mutable = define
+
+@overload
+@dataclass_transform(frozen_default=True, field_specifiers=(attrib, field))
+def frozen(
+    maybe_cls: _C,
+    *,
+    these: dict[str, Any] | None = ...,
     repr: bool = ...,
-    cmp: _EqOrderType | None = ...,
+    unsafe_hash: bool | None = ...,
     hash: bool | None = ...,
     init: bool = ...,
     slots: bool = ...,
@@ -340,50 +227,88 @@ def make_class(
     kw_only: bool = ...,
     cache_hash: bool = ...,
     auto_exc: bool = ...,
-    eq: _EqOrderType | None = ...,
-    order: _EqOrderType | None = ...,
-    collect_by_mro: bool = ...,
+    eq: bool | None = ...,
+    order: bool | None = ...,
+    auto_detect: bool = ...,
+    getstate_setstate: bool | None = ...,
     on_setattr: _OnSetAttrArgType | None = ...,
     field_transformer: _FieldTransformer | None = ...,
-) -> type: ...
+    match_args: bool = ...,
+) -> _C: ...
+@overload
+@dataclass_transform(frozen_default=True, field_specifiers=(attrib, field))
+def frozen(
+    maybe_cls: None = ...,
+    *,
+    these: dict[str, Any] | None = ...,
+    repr: bool = ...,
+    unsafe_hash: bool | None = ...,
+    hash: bool | None = ...,
+    init: bool = ...,
+    slots: bool = ...,
+    frozen: bool = ...,
+    weakref_slot: bool = ...,
+    str: bool = ...,
+    auto_attribs: bool = ...,
+    kw_only: bool = ...,
+    cache_hash: bool = ...,
+    auto_exc: bool = ...,
+    eq: bool | None = ...,
+    order: bool | None = ...,
+    auto_detect: bool = ...,
+    getstate_setstate: bool | None = ...,
+    on_setattr: _OnSetAttrArgType | None = ...,
+    field_transformer: _FieldTransformer | None = ...,
+    match_args: bool = ...,
+) -> Callable[[_C], _C]: ...
 
-# _funcs --
+class ClassProps:
+    # XXX: somehow when defining/using enums Mypy starts looking at our own
+    # (untyped) code and causes tons of errors.
+    Hashability: Any
+    KeywordOnly: Any
 
-# TODO: add support for returning TypedDict from the mypy plugin
-# FIXME: asdict/astuple do not honor their factory args. Waiting on one of
-# these:
-# https://github.com/python/mypy/issues/4236
-# https://github.com/python/typing/issues/253
-# XXX: remember to fix attrs.asdict/astuple too!
-def asdict(
-    inst: AttrsInstance,
-    recurse: bool = ...,
-    filter: _FilterType[Any] | None = ...,
-    dict_factory: type[Mapping[Any, Any]] = ...,
-    retain_collection_types: bool = ...,
-    value_serializer: Callable[[type, Attribute[Any], Any], Any] | None = ...,
-    tuple_keys: bool | None = ...,
-) -> dict[str, Any]: ...
+    is_exception: bool
+    is_slotted: bool
+    has_weakref_slot: bool
+    is_frozen: bool
+    # kw_only: ClassProps.KeywordOnly
+    kw_only: Any
+    collected_fields_by_mro: bool
+    added_init: bool
+    added_repr: bool
+    added_eq: bool
+    added_ordering: bool
+    # hashability: ClassProps.Hashability
+    hashability: Any
+    added_match_args: bool
+    added_str: bool
+    added_pickling: bool
+    on_setattr_hook: _OnSetAttrType | None
+    field_transformer: Callable[[Attribute[Any]], Attribute[Any]] | None
 
-# TODO: add support for returning NamedTuple from the mypy plugin
-def astuple(
-    inst: AttrsInstance,
-    recurse: bool = ...,
-    filter: _FilterType[Any] | None = ...,
-    tuple_factory: type[Sequence[Any]] = ...,
-    retain_collection_types: bool = ...,
-) -> tuple[Any, ...]: ...
-def has(cls: type) -> TypeGuard[type[AttrsInstance]]: ...
-def assoc(inst: _T, **changes: Any) -> _T: ...
-def evolve(inst: _T, **changes: Any) -> _T: ...
+    def __init__(
+        self,
+        is_exception: bool,
+        is_slotted: bool,
+        has_weakref_slot: bool,
+        is_frozen: bool,
+        # kw_only: ClassProps.KeywordOnly
+        kw_only: Any,
+        collected_fields_by_mro: bool,
+        added_init: bool,
+        added_repr: bool,
+        added_eq: bool,
+        added_ordering: bool,
+        # hashability: ClassProps.Hashability
+        hashability: Any,
+        added_match_args: bool,
+        added_str: bool,
+        added_pickling: bool,
+        on_setattr_hook: _OnSetAttrType,
+        field_transformer: Callable[[Attribute[Any]], Attribute[Any]],
+    ) -> None: ...
+    @property
+    def is_hashable(self) -> bool: ...
 
-# _config --
-
-def set_run_validators(run: bool) -> None: ...
-def get_run_validators() -> bool: ...
-
-# aliases --
-
-s = attributes = attrs
-ib = attr = attrib
-dataclass = attrs  # Technically, partial(attrs, auto_attribs=True) ;)
+def inspect(cls: type) -> ClassProps: ...
