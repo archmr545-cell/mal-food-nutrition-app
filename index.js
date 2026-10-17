@@ -1,192 +1,263 @@
 'use strict';
 
-var test = require('tape');
-var v = require('es-value-fixtures');
-var forEach = require('for-each');
-var inspect = require('object-inspect');
-
-var abs = require('../abs');
-var floor = require('../floor');
-var isFinite = require('../isFinite');
-var isInteger = require('../isInteger');
-var isNaN = require('../isNaN');
-var isNegativeZero = require('../isNegativeZero');
-var max = require('../max');
-var min = require('../min');
-var mod = require('../mod');
-var pow = require('../pow');
-var round = require('../round');
-var sign = require('../sign');
-
-var maxArrayLength = require('../constants/maxArrayLength');
-var maxSafeInteger = require('../constants/maxSafeInteger');
-var maxValue = require('../constants/maxValue');
-
-test('abs', function (t) {
-	t.equal(abs(-1), 1, 'abs(-1) === 1');
-	t.equal(abs(+1), 1, 'abs(+1) === 1');
-	t.equal(abs(+0), +0, 'abs(+0) === +0');
-	t.equal(abs(-0), +0, 'abs(-0) === +0');
-
-	t.end();
-});
-
-test('floor', function (t) {
-	t.equal(floor(-1.1), -2, 'floor(-1.1) === -2');
-	t.equal(floor(+1.1), 1, 'floor(+1.1) === 1');
-	t.equal(floor(+0), +0, 'floor(+0) === +0');
-	t.equal(floor(-0), -0, 'floor(-0) === -0');
-	t.equal(floor(-Infinity), -Infinity, 'floor(-Infinity) === -Infinity');
-	t.equal(floor(Number(Infinity)), Number(Infinity), 'floor(+Infinity) === +Infinity');
-	t.equal(floor(NaN), NaN, 'floor(NaN) === NaN');
-	t.equal(floor(0), +0, 'floor(0) === +0');
-	t.equal(floor(-0), -0, 'floor(-0) === -0');
-	t.equal(floor(1), 1, 'floor(1) === 1');
-	t.equal(floor(-1), -1, 'floor(-1) === -1');
-	t.equal(floor(1.1), 1, 'floor(1.1) === 1');
-	t.equal(floor(-1.1), -2, 'floor(-1.1) === -2');
-	t.equal(floor(maxValue), maxValue, 'floor(maxValue) === maxValue');
-	t.equal(floor(maxSafeInteger), maxSafeInteger, 'floor(maxSafeInteger) === maxSafeInteger');
-
-	t.end();
-});
-
-test('isFinite', function (t) {
-	t.equal(isFinite(0), true, 'isFinite(+0) === true');
-	t.equal(isFinite(-0), true, 'isFinite(-0) === true');
-	t.equal(isFinite(1), true, 'isFinite(1) === true');
-	t.equal(isFinite(Infinity), false, 'isFinite(Infinity) === false');
-	t.equal(isFinite(-Infinity), false, 'isFinite(-Infinity) === false');
-	t.equal(isFinite(NaN), false, 'isFinite(NaN) === false');
-
-	forEach(v.nonNumbers, function (nonNumber) {
-		t.equal(isFinite(nonNumber), false, 'isFinite(' + inspect(nonNumber) + ') === false');
+function hasKey(obj, keys) {
+	var o = obj;
+	keys.slice(0, -1).forEach(function (key) {
+		o = o[key] || {};
 	});
 
-	t.end();
-});
+	var key = keys[keys.length - 1];
+	return key in o;
+}
 
-test('isInteger', function (t) {
-	forEach([].concat(
-		// @ts-expect-error TS sucks with concat
-		v.nonNumbers,
-		v.nonIntegerNumbers
-	), function (nonInteger) {
-		t.equal(isInteger(nonInteger), false, 'isInteger(' + inspect(nonInteger) + ') === false');
+function isNumber(x) {
+	if (typeof x === 'number') { return true; }
+	if ((/^0x[0-9a-f]+$/i).test(x)) { return true; }
+	return (/^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(e[-+]?\d+)?$/).test(x);
+}
+
+function isConstructorOrProto(obj, key) {
+	return (key === 'constructor' && typeof obj[key] === 'function') || key === '__proto__';
+}
+
+module.exports = function (args, opts) {
+	if (!opts) { opts = {}; }
+
+	var flags = {
+		bools: {},
+		strings: {},
+		unknownFn: null,
+	};
+
+	if (typeof opts.unknown === 'function') {
+		flags.unknownFn = opts.unknown;
+	}
+
+	if (typeof opts.boolean === 'boolean' && opts.boolean) {
+		flags.allBools = true;
+	} else {
+		[].concat(opts.boolean).filter(Boolean).forEach(function (key) {
+			flags.bools[key] = true;
+		});
+	}
+
+	var aliases = {};
+
+	function aliasIsBoolean(key) {
+		return aliases[key].some(function (x) {
+			return flags.bools[x];
+		});
+	}
+
+	Object.keys(opts.alias || {}).forEach(function (key) {
+		aliases[key] = [].concat(opts.alias[key]);
+		aliases[key].forEach(function (x) {
+			aliases[x] = [key].concat(aliases[key].filter(function (y) {
+				return x !== y;
+			}));
+		});
 	});
 
-	t.end();
-});
-
-test('isNaN', function (t) {
-	forEach([].concat(
-		// @ts-expect-error TS sucks with concat
-		v.nonNumbers,
-		v.infinities,
-		v.zeroes,
-		v.integerNumbers
-	), function (nonNaN) {
-		t.equal(isNaN(nonNaN), false, 'isNaN(' + inspect(nonNaN) + ') === false');
+	[].concat(opts.string).filter(Boolean).forEach(function (key) {
+		flags.strings[key] = true;
+		if (aliases[key]) {
+			[].concat(aliases[key]).forEach(function (k) {
+				flags.strings[k] = true;
+			});
+		}
 	});
 
-	t.equal(isNaN(NaN), true, 'isNaN(NaN) === true');
+	var defaults = opts.default || {};
 
-	t.end();
-});
+	var argv = { _: [] };
 
-test('isNegativeZero', function (t) {
-	t.equal(isNegativeZero(-0), true, 'isNegativeZero(-0) === true');
-	t.equal(isNegativeZero(+0), false, 'isNegativeZero(+0) === false');
-	t.equal(isNegativeZero(1), false, 'isNegativeZero(1) === false');
-	t.equal(isNegativeZero(-1), false, 'isNegativeZero(-1) === false');
-	t.equal(isNegativeZero(NaN), false, 'isNegativeZero(NaN) === false');
-	t.equal(isNegativeZero(Infinity), false, 'isNegativeZero(Infinity) === false');
-	t.equal(isNegativeZero(-Infinity), false, 'isNegativeZero(-Infinity) === false');
+	function argDefined(key, arg) {
+		return (flags.allBools && (/^--[^=]+$/).test(arg))
+			|| flags.strings[key]
+			|| flags.bools[key]
+			|| aliases[key];
+	}
 
-	forEach(v.nonNumbers, function (nonNumber) {
-		t.equal(isNegativeZero(nonNumber), false, 'isNegativeZero(' + inspect(nonNumber) + ') === false');
+	function setKey(obj, keys, value) {
+		var o = obj;
+		for (var i = 0; i < keys.length - 1; i++) {
+			var key = keys[i];
+			if (isConstructorOrProto(o, key)) { return; }
+			if (o[key] === undefined) { o[key] = {}; }
+			if (
+				o[key] === Object.prototype
+				|| o[key] === Number.prototype
+				|| o[key] === String.prototype
+			) {
+				o[key] = {};
+			}
+			if (o[key] === Array.prototype) { o[key] = []; }
+			o = o[key];
+		}
+
+		var lastKey = keys[keys.length - 1];
+		if (isConstructorOrProto(o, lastKey)) { return; }
+		if (
+			o === Object.prototype
+			|| o === Number.prototype
+			|| o === String.prototype
+		) {
+			o = {};
+		}
+		if (o === Array.prototype) { o = []; }
+		if (o[lastKey] === undefined || flags.bools[lastKey] || typeof o[lastKey] === 'boolean') {
+			o[lastKey] = value;
+		} else if (Array.isArray(o[lastKey])) {
+			o[lastKey].push(value);
+		} else {
+			o[lastKey] = [o[lastKey], value];
+		}
+	}
+
+	function setArg(key, val, arg) {
+		if (arg && flags.unknownFn && !argDefined(key, arg)) {
+			if (flags.unknownFn(arg) === false) { return; }
+		}
+
+		var value = !flags.strings[key] && isNumber(val)
+			? Number(val)
+			: val;
+		setKey(argv, key.split('.'), value);
+
+		(aliases[key] || []).forEach(function (x) {
+			setKey(argv, x.split('.'), value);
+		});
+	}
+
+	Object.keys(flags.bools).forEach(function (key) {
+		setArg(key, defaults[key] === undefined ? false : defaults[key]);
 	});
 
-	t.end();
-});
+	var notFlags = [];
 
-test('max', function (t) {
-	t.equal(max(1, 2), 2, 'max(1, 2) === 2');
-	t.equal(max(1, 2, 3), 3, 'max(1, 2, 3) === 3');
-	t.equal(max(1, 2, 3, 4), 4, 'max(1, 2, 3, 4) === 4');
-	t.equal(max(1, 2, 3, 4, 5), 5, 'max(1, 2, 3, 4, 5) === 5');
-	t.equal(max(1, 2, 3, 4, 5, 6), 6, 'max(1, 2, 3, 4, 5, 6) === 6');
-	t.equal(max(1, 2, 3, 4, 5, 6, 7), 7, 'max(1, 2, 3, 4, 5, 6, 7) === 7');
+	if (args.indexOf('--') !== -1) {
+		notFlags = args.slice(args.indexOf('--') + 1);
+		args = args.slice(0, args.indexOf('--'));
+	}
 
-	t.end();
-});
+	for (var i = 0; i < args.length; i++) {
+		var arg = args[i];
+		var key;
+		var next;
 
-test('min', function (t) {
-	t.equal(min(1, 2), 1, 'min(1, 2) === 1');
-	t.equal(min(1, 2, 3), 1, 'min(1, 2, 3) === 1');
-	t.equal(min(1, 2, 3, 4), 1, 'min(1, 2, 3, 4) === 1');
-	t.equal(min(1, 2, 3, 4, 5), 1, 'min(1, 2, 3, 4, 5) === 1');
-	t.equal(min(1, 2, 3, 4, 5, 6), 1, 'min(1, 2, 3, 4, 5, 6) === 1');
+		if ((/^--.+=/).test(arg)) {
+			// Using [\s\S] instead of . because js doesn't support the
+			// 'dotall' regex modifier. See:
+			// http://stackoverflow.com/a/1068308/13216
+			var m = arg.match(/^--([^=]+)=([\s\S]*)$/);
+			key = m[1];
+			var value = m[2];
+			if (flags.bools[key]) {
+				value = value !== 'false';
+			}
+			setArg(key, value, arg);
+		} else if ((/^--no-.+/).test(arg)) {
+			key = arg.match(/^--no-(.+)/)[1];
+			setArg(key, false, arg);
+		} else if ((/^--.+/).test(arg)) {
+			key = arg.match(/^--(.+)/)[1];
+			next = args[i + 1];
+			if (
+				next !== undefined
+				&& !(/^(-|--)[^-]/).test(next)
+				&& !flags.bools[key]
+				&& !flags.allBools
+				&& (aliases[key] ? !aliasIsBoolean(key) : true)
+			) {
+				setArg(key, next, arg);
+				i += 1;
+			} else if ((/^(true|false)$/).test(next)) {
+				setArg(key, next === 'true', arg);
+				i += 1;
+			} else {
+				setArg(key, flags.strings[key] ? '' : true, arg);
+			}
+		} else if ((/^-[^-]+/).test(arg)) {
+			var letters = arg.slice(1, -1).split('');
 
-	t.end();
-});
+			var broken = false;
+			for (var j = 0; j < letters.length; j++) {
+				next = arg.slice(j + 2);
 
-test('mod', function (t) {
-	t.equal(mod(1, 2), 1, 'mod(1, 2) === 1');
-	t.equal(mod(2, 2), 0, 'mod(2, 2) === 0');
-	t.equal(mod(3, 2), 1, 'mod(3, 2) === 1');
-	t.equal(mod(4, 2), 0, 'mod(4, 2) === 0');
-	t.equal(mod(5, 2), 1, 'mod(5, 2) === 1');
-	t.equal(mod(6, 2), 0, 'mod(6, 2) === 0');
-	t.equal(mod(7, 2), 1, 'mod(7, 2) === 1');
-	t.equal(mod(8, 2), 0, 'mod(8, 2) === 0');
-	t.equal(mod(9, 2), 1, 'mod(9, 2) === 1');
-	t.equal(mod(10, 2), 0, 'mod(10, 2) === 0');
-	t.equal(mod(11, 2), 1, 'mod(11, 2) === 1');
+				if (next === '-') {
+					setArg(letters[j], next, arg);
+					continue;
+				}
 
-	t.end();
-});
+				if ((/[A-Za-z]/).test(letters[j]) && next[0] === '=') {
+					setArg(letters[j], next.slice(1), arg);
+					broken = true;
+					break;
+				}
 
-test('pow', function (t) {
-	t.equal(pow(2, 2), 4, 'pow(2, 2) === 4');
-	t.equal(pow(2, 3), 8, 'pow(2, 3) === 8');
-	t.equal(pow(2, 4), 16, 'pow(2, 4) === 16');
-	t.equal(pow(2, 5), 32, 'pow(2, 5) === 32');
-	t.equal(pow(2, 6), 64, 'pow(2, 6) === 64');
-	t.equal(pow(2, 7), 128, 'pow(2, 7) === 128');
-	t.equal(pow(2, 8), 256, 'pow(2, 8) === 256');
-	t.equal(pow(2, 9), 512, 'pow(2, 9) === 512');
-	t.equal(pow(2, 10), 1024, 'pow(2, 10) === 1024');
+				if (
+					(/[A-Za-z]/).test(letters[j])
+					&& (/-?\d+(\.\d*)?(e-?\d+)?$/).test(next)
+				) {
+					setArg(letters[j], next, arg);
+					broken = true;
+					break;
+				}
 
-	t.end();
-});
+				if (letters[j + 1] && letters[j + 1].match(/\W/)) {
+					setArg(letters[j], arg.slice(j + 2), arg);
+					broken = true;
+					break;
+				} else {
+					setArg(letters[j], flags.strings[letters[j]] ? '' : true, arg);
+				}
+			}
 
-test('round', function (t) {
-	t.equal(round(1.1), 1, 'round(1.1) === 1');
-	t.equal(round(1.5), 2, 'round(1.5) === 2');
-	t.equal(round(1.9), 2, 'round(1.9) === 2');
+			key = arg.slice(-1)[0];
+			if (!broken && key !== '-') {
+				if (
+					args[i + 1]
+					&& !(/^(-|--)[^-]/).test(args[i + 1])
+					&& !flags.bools[key]
+					&& (aliases[key] ? !aliasIsBoolean(key) : true)
+				) {
+					setArg(key, args[i + 1], arg);
+					i += 1;
+				} else if (args[i + 1] && (/^(true|false)$/).test(args[i + 1])) {
+					setArg(key, args[i + 1] === 'true', arg);
+					i += 1;
+				} else {
+					setArg(key, flags.strings[key] ? '' : true, arg);
+				}
+			}
+		} else {
+			if (!flags.unknownFn || flags.unknownFn(arg) !== false) {
+				argv._.push(flags.strings._ || !isNumber(arg) ? arg : Number(arg));
+			}
+			if (opts.stopEarly) {
+				argv._.push.apply(argv._, args.slice(i + 1));
+				break;
+			}
+		}
+	}
 
-	t.end();
-});
+	Object.keys(defaults).forEach(function (k) {
+		if (!hasKey(argv, k.split('.'))) {
+			setKey(argv, k.split('.'), defaults[k]);
 
-test('sign', function (t) {
-	t.equal(sign(-1), -1, 'sign(-1) === -1');
-	t.equal(sign(+1), +1, 'sign(+1) === +1');
-	t.equal(sign(+0), +0, 'sign(+0) === +0');
-	t.equal(sign(-0), -0, 'sign(-0) === -0');
-	t.equal(sign(NaN), NaN, 'sign(NaN) === NaN');
-	t.equal(sign(Infinity), +1, 'sign(Infinity) === +1');
-	t.equal(sign(-Infinity), -1, 'sign(-Infinity) === -1');
-	t.equal(sign(maxValue), +1, 'sign(maxValue) === +1');
-	t.equal(sign(maxSafeInteger), +1, 'sign(maxSafeInteger) === +1');
+			(aliases[k] || []).forEach(function (x) {
+				setKey(argv, x.split('.'), defaults[k]);
+			});
+		}
+	});
 
-	t.end();
-});
+	if (opts['--']) {
+		argv['--'] = notFlags.slice();
+	} else {
+		notFlags.forEach(function (k) {
+			argv._.push(k);
+		});
+	}
 
-test('constants', function (t) {
-	t.equal(typeof maxArrayLength, 'number', 'typeof maxArrayLength === "number"');
-	t.equal(typeof maxSafeInteger, 'number', 'typeof maxSafeInteger === "number"');
-	t.equal(typeof maxValue, 'number', 'typeof maxValue === "number"');
-
-	t.end();
-});
+	return argv;
+};
