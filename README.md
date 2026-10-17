@@ -1,99 +1,201 @@
-# better-sqlite3 [![Build Status](https://github.com/JoshuaWise/better-sqlite3/actions/workflows/build.yml/badge.svg)](https://github.com/JoshuaWise/better-sqlite3/actions/workflows/build.yml?query=branch%3Amaster)
+# bcrypt.js
 
-The fastest and simplest library for SQLite in Node.js.
+Optimized bcrypt in JavaScript with zero dependencies, with TypeScript support. Compatible to the C++
+[bcrypt](https://npmjs.org/package/bcrypt) binding on Node.js and also working in the browser.
 
-- Full transaction support
-- High performance, efficiency, and safety
-- Easy-to-use synchronous API *(better concurrency than an asynchronous API... yes, you read that correctly)*
-- Support for user-defined functions, aggregates, virtual tables, and extensions
-- 64-bit integers *(invisible until you need them)*
-- Worker thread support *(for large/slow queries)*
+[![Build Status](https://img.shields.io/github/actions/workflow/status/dcodeIO/bcrypt.js/test.yml?branch=main&label=test&logo=github)](https://github.com/dcodeIO/bcrypt.js/actions/workflows/test.yml) [![Publish Status](https://img.shields.io/github/actions/workflow/status/dcodeIO/bcrypt.js/publish.yml?branch=main&label=publish&logo=github)](https://github.com/dcodeIO/bcrypt.js/actions/workflows/publish.yml) [![npm](https://img.shields.io/npm/v/bcryptjs.svg?label=npm&color=007acc&logo=npm)](https://www.npmjs.com/package/bcryptjs)
 
-## Help this project stay strong! &#128170;
+## Security considerations
 
-`better-sqlite3` is used by thousands of developers and engineers on a daily basis. Long nights and weekends were spent keeping this project strong and dependable, with no ask for compensation or funding, until now. If your company uses `better-sqlite3`, ask your manager to consider supporting the project:
+Besides incorporating a salt to protect against rainbow table attacks, bcrypt is an adaptive function: over time, the
+iteration count can be increased to make it slower, so it remains resistant to brute-force search attacks even with
+increasing computation power. ([see](http://en.wikipedia.org/wiki/Bcrypt))
 
-- [Become a GitHub sponsor](https://github.com/sponsors/JoshuaWise)
-- [Become a backer on Patreon](https://www.patreon.com/joshuawise)
-- [Make a one-time donation on PayPal](https://www.paypal.me/joshuathomaswise)
+While bcrypt.js is compatible to the C++ bcrypt binding, it is written in pure JavaScript and thus slower ([about 30%](https://github.com/dcodeIO/bcrypt.js/wiki/Benchmark)), effectively reducing the number of iterations that can be
+processed in an equal time span.
 
-## How other libraries compare
-
-|   |select 1 row &nbsp;`get()`&nbsp;|select 100 rows &nbsp;&nbsp;`all()`&nbsp;&nbsp;|select 100 rows `iterate()` 1-by-1|insert 1 row `run()`|insert 100 rows in a transaction|
-|---|---|---|---|---|---|
-|better-sqlite3|1x|1x|1x|1x|1x|
-|[sqlite](https://www.npmjs.com/package/sqlite) and [sqlite3](https://www.npmjs.com/package/sqlite3)|11.7x slower|2.9x slower|24.4x slower|2.8x slower|15.6x slower|
-
-> You can verify these results by [running the benchmark yourself](./docs/benchmark.md).
-
-## Installation
-
-```bash
-npm install better-sqlite3
-```
-
-> Requires a [currently supported Node.js](https://nodejs.org/en/about/previous-releases) version. Prebuilt binaries are available for [LTS versions](https://nodejs.org/en/about/previous-releases). If you have trouble installing, check the [troubleshooting guide](./docs/troubleshooting.md).
+The maximum input length is 72 bytes (note that UTF-8 encoded characters use up to 4 bytes) and the length of generated
+hashes is 60 characters. Note that maximum input length is not implicitly checked by the library for compatibility with
+the C++ binding on Node.js, but should be checked with `bcrypt.truncates(password)` where necessary.
 
 ## Usage
 
-```js
-const db = require('better-sqlite3')('foobar.db', options);
+The package exports an ECMAScript module with an UMD fallback.
 
-const row = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-console.log(row.firstName, row.lastName, row.email);
+```
+$> npm install bcryptjs
 ```
 
-Though not required, [it is generally important to set the WAL pragma for performance reasons](https://github.com/WiseLibs/better-sqlite3/blob/master/docs/performance.md).
-
-```js
-db.pragma('journal_mode = WAL');
+```ts
+import bcrypt from "bcryptjs";
 ```
 
-##### In ES6 module notation:
+### Usage with a CDN
 
-```js
-import Database from 'better-sqlite3';
-const db = new Database('foobar.db', options);
-db.pragma('journal_mode = WAL');
+- From GitHub via [jsDelivr](https://www.jsdelivr.com):<br />
+  `https://cdn.jsdelivr.net/gh/dcodeIO/bcrypt.js@TAG/index.js` (ESM)
+- From npm via [jsDelivr](https://www.jsdelivr.com):<br />
+  `https://cdn.jsdelivr.net/npm/bcryptjs@VERSION/index.js` (ESM)<br />
+  `https://cdn.jsdelivr.net/npm/bcryptjs@VERSION/umd/index.js` (UMD)
+- From npm via [unpkg](https://unpkg.com):<br />
+  `https://unpkg.com/bcryptjs@VERSION/index.js` (ESM)<br />
+  `https://unpkg.com/bcryptjs@VERSION/umd/index.js` (UMD)
+
+Replace `TAG` respectively `VERSION` with a [specific version](https://github.com/dcodeIO/bcrypt.js/releases) or omit it (not recommended in production) to use latest.
+
+When using the ESM variant in a browser, the `crypto` import needs to be stubbed out, for example using an [import map](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script/type/importmap). Bundlers should omit it automatically.
+
+### Usage - Sync
+
+To hash a password:
+
+```ts
+const salt = bcrypt.genSaltSync(10);
+const hash = bcrypt.hashSync("B4c0/\/", salt);
+// Store hash in your password DB
 ```
 
-## Why should I use this instead of [node-sqlite3](https://github.com/mapbox/node-sqlite3)?
+To check a password:
 
-- `node-sqlite3` uses asynchronous APIs for tasks that are either CPU-bound or serialized. That's not only bad design, but it wastes tons of resources. It also causes [mutex thrashing](https://en.wikipedia.org/wiki/Resource_contention) which has devastating effects on performance.
-- `node-sqlite3` exposes low-level (C language) memory management functions. `better-sqlite3` does it the JavaScript way, allowing the garbage collector to worry about memory management.
-- `better-sqlite3` is simpler to use, and it provides nice utilities for some operations that are very difficult or impossible in `node-sqlite3`.
-- `better-sqlite3` is much faster than `node-sqlite3` in most cases, and just as fast in all other cases.
+```ts
+// Load hash from your password DB
+bcrypt.compareSync("B4c0/\/", hash); // true
+bcrypt.compareSync("not_bacon", hash); // false
+```
 
-#### When is this library not appropriate?
+Auto-gen a salt and hash:
 
-In most cases, if you're attempting something that cannot be reasonably accomplished with `better-sqlite3`, it probably cannot be reasonably accomplished with SQLite in general. For example, if you're executing queries that take one second to complete, and you expect to have many concurrent users executing those queries, no amount of asynchronicity will save you from SQLite's serialized nature. Fortunately, SQLite is very *very* fast. With proper indexing, we've been able to achieve upward of 2000 queries per second with 5-way-joins in a 60 GB database, where each query was handling 5–50 kilobytes of real data.
+```ts
+const hash = bcrypt.hashSync("bacon", 10);
+```
 
-If you have a performance problem, the most likely causes are inefficient queries, improper indexing, or a lack of [WAL mode](./docs/performance.md)—not `better-sqlite3` itself. However, there are some cases where `better-sqlite3` could be inappropriate:
+### Usage - Async
 
-- If you expect a high volume of concurrent reads each returning many megabytes of data (i.e., videos)
-- If you expect a high volume of concurrent writes (i.e., a social media site)
-- If your database's size is near the terabyte range
+To hash a password:
 
-For these situations, you should probably use a full-fledged RDBMS such as [PostgreSQL](https://www.postgresql.org/).
+```ts
+const salt = await bcrypt.genSalt(10);
+const hash = await bcrypt.hash("B4c0/\/", salt);
+// Store hash in your password DB
+```
 
-## Upgrading
+```ts
+bcrypt.genSalt(10, (err, salt) => {
+  bcrypt.hash("B4c0/\/", salt, function (err, hash) {
+    // Store hash in your password DB
+  });
+});
+```
 
-Upgrading your `better-sqlite3` dependency can potentially introduce breaking changes, either in the `better-sqlite3` API (if you upgrade to a new [major version](https://semver.org/)), or between your existing database(s) and the underlying version of SQLite. Before upgrading, review:
+To check a password:
 
-* [`better-sqlite3` release notes](https://github.com/WiseLibs/better-sqlite3/releases)
-* [SQLite release history](https://www.sqlite.org/changes.html)
+```ts
+// Load hash from your password DB
+await bcrypt.compare("B4c0/\/", hash); // true
+await bcrypt.compare("not_bacon", hash); // false
+```
 
-# Documentation
+```ts
+// Load hash from your password DB
+bcrypt.compare("B4c0/\/", hash, (err, res) => {
+  // res === true
+});
+bcrypt.compare("not_bacon", hash, (err, res) => {
+  // res === false
+});
+```
 
-- [API documentation](./docs/api.md)
-- [Performance](./docs/performance.md) (also see [benchmark results](./docs/benchmark.md))
-- [64-bit integer support](./docs/integer.md)
-- [Worker thread support](./docs/threads.md)
-- [Unsafe mode (advanced)](./docs/unsafe.md)
-- [SQLite compilation (advanced)](./docs/compilation.md)
-- [Contribution rules](./docs/contribution.md)
-- [Code of conduct](./docs/conduct.md)
+Auto-gen a salt and hash:
 
-# License
+```ts
+await bcrypt.hash("B4c0/\/", 10);
+// Store hash in your password DB
+```
 
-[MIT](./LICENSE)
+```ts
+bcrypt.hash("B4c0/\/", 10, (err, hash) => {
+  // Store hash in your password DB
+});
+```
+
+**Note:** Under the hood, asynchronous APIs split an operation into small chunks. After the completion of a chunk, the execution of the next chunk is placed on the back of the [JS event queue](https://developer.mozilla.org/en/docs/Web/JavaScript/EventLoop), efficiently yielding for other computation to execute.
+
+### Usage - Command Line
+
+```
+Usage: bcrypt <input> [rounds|salt]
+```
+
+## API
+
+### Callback types
+
+- **Callback<`T`>**: `(err: Error | null, result?: T) => void`<br />
+  Called with an error on failure or a value of type `T` upon success.
+
+- **ProgressCallback**: `(percentage: number) => void`<br />
+  Called with the percentage of rounds completed (0.0 - 1.0), maximally once per `MAX_EXECUTION_TIME = 100` ms.
+
+- **RandomFallback**: `(length: number) => number[]`<br />
+  Called to obtain random bytes when both [Web Crypto API](http://www.w3.org/TR/WebCryptoAPI/) and Node.js
+  [crypto](http://nodejs.org/api/crypto.html) are not available.
+
+### Functions
+
+- bcrypt.**genSaltSync**(rounds?: `number`): `string`<br />
+  Synchronously generates a salt. Number of rounds defaults to 10 when omitted.
+
+- bcrypt.**genSalt**(rounds?: `number`): `Promise<string>`<br />
+  Asynchronously generates a salt. Number of rounds defaults to 10 when omitted.
+
+- bcrypt.**genSalt**([rounds: `number`, ]callback: `Callback<string>`): `void`<br />
+  Asynchronously generates a salt. Number of rounds defaults to 10 when omitted.
+
+- bcrypt.**truncates**(password: `string`): `boolean`<br />
+  Tests if a password will be truncated when hashed, that is its length is greater than 72 bytes when converted to UTF-8.
+
+- bcrypt.**hashSync**(password: `string`, salt?: `number | string`): `string`
+  Synchronously generates a hash for the given password. Number of rounds defaults to 10 when omitted.
+
+- bcrypt.**hash**(password: `string`, salt: `number | string`): `Promise<string>`<br />
+  Asynchronously generates a hash for the given password.
+
+- bcrypt.**hash**(password: `string`, salt: `number | string`, callback: `Callback<string>`, progressCallback?: `ProgressCallback`): `void`<br />
+  Asynchronously generates a hash for the given password.
+
+- bcrypt.**compareSync**(password: `string`, hash: `string`): `boolean`<br />
+  Synchronously tests a password against a hash.
+
+- bcrypt.**compare**(password: `string`, hash: `string`): `Promise<boolean>`<br />
+  Asynchronously compares a password against a hash.
+
+- bcrypt.**compare**(password: `string`, hash: `string`, callback: `Callback<boolean>`, progressCallback?: `ProgressCallback`)<br />
+  Asynchronously compares a password against a hash.
+
+- bcrypt.**getRounds**(hash: `string`): `number`<br />
+  Gets the number of rounds used to encrypt the specified hash.
+
+- bcrypt.**getSalt**(hash: `string`): `string`<br />
+  Gets the salt portion from a hash. Does not validate the hash.
+
+- bcrypt.**setRandomFallback**(random: `RandomFallback`): `void`<br />
+  Sets the pseudo random number generator to use as a fallback if neither [Web Crypto API](http://www.w3.org/TR/WebCryptoAPI/) nor Node.js [crypto](http://nodejs.org/api/crypto.html) are available. Please note: It is highly important that the PRNG used is cryptographically secure and that it is seeded properly!
+
+## Building
+
+Building the UMD fallback:
+
+```
+$> npm run build
+```
+
+Running the [tests](./tests):
+
+```
+$> npm test
+```
+
+## Credits
+
+Based on work started by Shane Girish at [bcrypt-nodejs](https://github.com/shaneGirish/bcrypt-nodejs), which is itself
+based on [javascript-bcrypt](http://code.google.com/p/javascript-bcrypt/) (New BSD-licensed).
