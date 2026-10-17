@@ -1,59 +1,104 @@
-import sys
-from typing import Any, Awaitable, Callable, TypeVar
+# SPDX-License-Identifier: MIT
 
-from frozenlist import FrozenList
+"""
+Classes Without Boilerplate
+"""
 
-if sys.version_info >= (3, 11):
-    from typing import Unpack
-else:
-    from typing_extensions import Unpack
+from functools import partial
+from typing import Callable, Literal, Protocol
 
-if sys.version_info >= (3, 13):
-    from typing import TypeVarTuple
-else:
-    from typing_extensions import TypeVarTuple
+from . import converters, exceptions, filters, setters, validators
+from ._cmp import cmp_using
+from ._config import get_run_validators, set_run_validators
+from ._funcs import asdict, assoc, astuple, has, resolve_types
+from ._make import (
+    NOTHING,
+    Attribute,
+    Converter,
+    Factory,
+    _Nothing,
+    attrib,
+    attrs,
+    evolve,
+    fields,
+    fields_dict,
+    make_class,
+    validate,
+)
+from ._next_gen import define, field, frozen, mutable
+from ._version_info import VersionInfo
 
-_T = TypeVar("_T")
-_Ts = TypeVarTuple("_Ts", default=Unpack[tuple[()]])
 
-__version__ = "1.4.0"
-
-__all__ = ("Signal",)
+s = attributes = attrs
+ib = attr = attrib
+dataclass = partial(attrs, auto_attribs=True)  # happy Easter ;)
 
 
-class Signal(FrozenList[Callable[[Unpack[_Ts]], Awaitable[object]]]):
-    """Coroutine-based signal implementation.
+class AttrsInstance(Protocol):
+    pass
 
-    To connect a callback to a signal, use any list method.
 
-    Signals are fired using the send() coroutine, which takes named
-    arguments.
+NothingType = Literal[_Nothing.NOTHING]
+
+__all__ = [
+    "NOTHING",
+    "Attribute",
+    "AttrsInstance",
+    "Converter",
+    "Factory",
+    "NothingType",
+    "asdict",
+    "assoc",
+    "astuple",
+    "attr",
+    "attrib",
+    "attributes",
+    "attrs",
+    "cmp_using",
+    "converters",
+    "define",
+    "evolve",
+    "exceptions",
+    "field",
+    "fields",
+    "fields_dict",
+    "filters",
+    "frozen",
+    "get_run_validators",
+    "has",
+    "ib",
+    "make_class",
+    "mutable",
+    "resolve_types",
+    "s",
+    "set_run_validators",
+    "setters",
+    "validate",
+    "validators",
+]
+
+
+def _make_getattr(mod_name: str) -> Callable:
+    """
+    Create a metadata proxy for packaging information that uses *mod_name* in
+    its warnings and errors.
     """
 
-    __slots__ = ("_owner",)
+    def __getattr__(name: str) -> str:
+        if name not in ("__version__", "__version_info__"):
+            msg = f"module {mod_name} has no attribute {name}"
+            raise AttributeError(msg)
 
-    def __init__(self, owner: object):
-        super().__init__()
-        self._owner = owner
+        from importlib.metadata import metadata
 
-    def __repr__(self) -> str:
-        return "<Signal owner={}, frozen={}, {!r}>".format(
-            self._owner, self.frozen, list(self)
-        )
+        meta = metadata("attrs")
 
-    async def send(self, *args: Unpack[_Ts], **kwargs: Any) -> None:
-        """
-        Sends data to all registered receivers.
-        """
-        if not self.frozen:
-            raise RuntimeError("Cannot send non-frozen signal.")
+        if name == "__version_info__":
+            return VersionInfo._from_version_string(meta["version"])
 
-        for receiver in self:
-            await receiver(*args, **kwargs)
+        return meta["version"]
 
-    def __call__(
-        self, func: Callable[[Unpack[_Ts]], Awaitable[_T]]
-    ) -> Callable[[Unpack[_Ts]], Awaitable[_T]]:
-        """Decorator to add a function to this Signal."""
-        self.append(func)
-        return func
+    return __getattr__
+
+
+__getattr__ = _make_getattr(__name__)
