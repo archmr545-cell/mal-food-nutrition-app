@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="../">
+<title>Mal-Food Nutrition</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+<audio id="welcomeAudio" preload="auto" hidden aria-hidden="true">
+  <source src="welcome-id.mp3" type="audio/mpeg">
+</audio>
+
+<section id="authView" class="auth">
+  <div class="auth-card">
+    <div class="brand">Mal-Food <span>Nutrition</span></div>
+    <p class="muted center">Nutrisi lebih teratur, hidup lebih sehat.</p>
+    <div class="tabs">
+      <button class="tab active" data-auth="login">Login</button>
+      <button class="tab" data-auth="register">Daftar</button>
+      <button class="tab" data-auth="forgot">Lupa PW</button>
+    </div>
+
+    <form id="loginForm" class="auth-form">
+      <label>Email<input id="loginEmail" type="email" required></label>
+      <label>Password<input id="loginPassword" type="password" required></label>
+      <button class="primary">Masuk</button>
+      <p class="muted center">Belum punya akun? Pilih tab <b>Daftar</b> untuk membuat akun baru.</p>
+    </form>
+
+    <form id="registerForm" class="auth-form hidden">
+      <label>Nama lengkap<input id="regName" required maxlength="80" autocomplete="name"></label>
+      <label>Email<input id="regEmail" type="email" required></label>
+      <label>Password<input id="regPassword" type="password" minlength="8" required></label>
+      <div class="grid3">
+        <label>Tanggal<select id="birthDay" required><option value="">Pilih</option></select></label>
+        <label>Bulan<select id="birthMonth" required><option value="">Pilih</option></select></label>
+        <label>Tahun<select id="birthYear" required><option value="">Pilih</option></select></label>
+      </div>
+      <button class="primary">Buat Akun</button>
+    </form>
+
+    <form id="forgotForm" class="auth-form hidden">
+      <label>Email<input id="forgotEmail" type="email" required></label>
+      <label>Pesan bantuan<textarea id="forgotMessage" rows="4" maxlength="500" required placeholder="Ceritakan bantuan yang kamu perlukan. Jangan tulis password."></textarea></label>
+      <button class="primary">Kirim Laporan</button>
+    </form>
+
+    <form id="resetPasswordForm" class="auth-form hidden">
+      <h2>Buat password baru</h2>
+      <p class="muted">Pilih password minimal 8 karakter untuk akunmu.</p>
+      <label>Password baru<input id="newPassword" type="password" minlength="8" autocomplete="new-password" required></label>
+      <label>Ulangi password baru<input id="confirmNewPassword" type="password" minlength="8" autocomplete="new-password" required></label>
+      <button class="primary">Simpan password baru</button>
+    </form>
+  </div>
+</section>
+
+<div id="userApp" class="hidden">
+  <header class="topbar">
+    <div class="brand">Mal-Food <span>Nutrition</span></div>
+    <nav>
+      <button data-page="dashboard">Dashboard</button>
+      <button data-page="foods">Makanan</button>
+      <button data-page="diary">Diary</button>
+      <button data-page="calculator">Kalori</button>
+      <button data-page="recipes">Resep</button>
+      <button data-page="profile">Profil</button>
+    </nav>
+    <button id="logoutBtn" class="ghost">Keluar</button>
+  </header>
+
+  <main class="container">
+    <section id="dashboardPage" class="page">
+      <div class="hero">
+        <div class="hero-copy">
+          <span class="hero-kicker"><span aria-hidden="true"></span> RUANG SEHATMU</span>
+          <h1>Hai, <span id="helloName"></span>!</h1>
+          <p>Mulai dari pilihan sederhana. Rawat tubuhmu dengan lebih sadar hari ini.</p>
+          <div class="hero-actions">
+            <button class="hero-action" data-page="foods">Jelajahi makanan <span aria-hidden="true">→</span></button>
+            <button class="hero-secondary" data-page="calculator">Hitung kebutuhan kalori</button>
+          </div>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <div class="hero-plate"><span>🥗</span></div>
+          <i>🥑</i><b>🍊</b><em>SEGAR SETIAP HARI</em>
+        </div>
+      </div>
+      <div class="dashboard-heading">
+        <div><span class="dashboard-eyebrow">PROGRES HARI INI</span><h2>Ringkasan harian</h2><p>Pantau nutrisi dari makanan yang kamu catat.</p></div>
+        <div id="dashboardDate" class="dashboard-date"><span aria-hidden="true">◷</span><span id="dashboardDateText"></span></div>
+      </div>
+      <div class="cards3">
+        <div class="stat dashboard-stat dashboard-calories"><span class="dashboard-stat-icon" aria-hidden="true">◉</span><small>Kalori tercatat</small><div class="dashboard-stat-value"><strong id="dashCalories">0</strong><span>kcal</span></div><span class="dashboard-stat-note">Asupan makananmu hari ini</span></div>
+        <div class="stat dashboard-stat dashboard-protein"><span class="dashboard-stat-icon" aria-hidden="true">✳</span><small>Protein</small><div class="dashboard-stat-value"><strong id="dashProtein">0</strong><span>g</span></div><span class="dashboard-stat-note">Untuk mendukung tubuhmu</span></div>
+        <div class="stat dashboard-stat dashboard-carbs"><span class="dashboard-stat-icon" aria-hidden="true">⌁</span><small>Karbohidrat</small><div class="dashboard-stat-value"><strong id="dashCarbs">0</strong><span>g</span></div><span class="dashboard-stat-note">Sumber energi harian</span></div>
+      </div>
+      <section class="nutrition-guide" aria-labelledby="nutritionGuideTitle">
+        <div class="nutrition-guide-heading">
+          <div><span class="dashboard-eyebrow">KENALI GIZI</span><h2 id="nutritionGuideTitle">Dasar nutrisi, mulai dari piringmu</h2><p>Memahami apa yang dibutuhkan tubuh membantu kita membuat pilihan makan yang lebih seimbang.</p></div>
+          <span class="nutrition-guide-mark" aria-hidden="true">✳</span>
+        </div>
+        <div class="nutrition-guide-grid">
+          <article class="nutrition-guide-card">
+            <span class="nutrition-guide-icon nutrition-guide-icon-green" aria-hidden="true">🌿</span>
+            <h3>Apa itu nutrisi?</h3>
+            <p>Nutrisi adalah zat dalam makanan dan minuman yang digunakan tubuh untuk menghasilkan energi, tumbuh, memperbaiki jaringan, dan menjalankan fungsinya.</p>
+          </article>
+          <article class="nutrition-guide-card">
+            <span class="nutrition-guide-icon nutrition-guide-icon-orange" aria-hidden="true">⚡</span>
+            <h3>Kenali zat gizi</h3>
+            <p>Karbohidrat dan lemak membantu menyediakan energi; protein mendukung pertumbuhan dan perbaikan jaringan. Vitamin, mineral, air, dan serat juga penting bagi tubuh.</p>
+          </article>
+          <article class="nutrition-guide-card nutrition-guide-card-tip">
+            <span class="nutrition-guide-icon nutrition-guide-icon-purple" aria-hidden="true">🍽️</span>
+            <h3>Isi piring lebih seimbang</h3>
+            <p>Biasakan beragam makanan: sayur dan buah, sumber karbohidrat, serta lauk berprotein. Lengkapi dengan air putih dan sesuaikan porsi dengan kebutuhanmu.</p>
+          </article>
+        </div>
+        <p class="nutrition-guide-note">Kebutuhan gizi setiap orang berbeda, bergantung pada usia, aktivitas, dan kondisi kesehatan.</p>
+      </section>
+      <div class="card dashboard-diary">
+        <div class="dashboard-diary-heading"><div><span class="dashboard-eyebrow">CATATAN MAKAN</span><h2>Food diary terbaru</h2><p>Ringkasan makanan yang sudah kamu masukkan.</p></div><button class="dashboard-diary-link" data-page="diary">Lihat semua <span aria-hidden="true">→</span></button></div>
+        <div id="dashDiary"></div>
+      </div>
+    </section>
+
+    <section id="foodsPage" class="page hidden">
+      <div class="card">
+        <div class="row">
+          <div><h2>Database Makanan</h2><p class="muted">Semua makanan tersedia di sini. Cari nama makanan, lalu tambahkan porsinya ke diary.</p></div>
+          <input id="foodSearch" class="search" placeholder="Cari makanan...">
+        </div>
+        <p id="foodCount" class="food-count" aria-live="polite">Memuat semua makanan...</p>
+        <p class="food-disclaimer">Nilai gizi adalah perkiraan per porsi dan dapat berbeda sesuai bahan serta cara memasak.</p>
+        <div id="foodList"></div>
+      </div>
+    </section>
+
+    <section id="diaryPage" class="page hidden">
+      <div class="card"><h2>Food Diary</h2><div id="diaryList"></div></div>
+    </section>
+
+    <section id="calculatorPage" class="page hidden">
+      <div class="calculator-heading">
+        <span class="eyebrow">KENALI KEBUTUHAN TUBUHMU</span>
+        <h1>Kalkulator kebutuhan kalori</h1>
+        <p class="muted">Hitung perkiraan kebutuhanmu atau catat makanan untuk melihat ringkasan gizinya.</p>
+      </div>
+      <div class="calculator-modes" role="tablist" aria-label="Mode kalkulator">
+        <button class="calculator-mode active" id="needsModeButton" type="button" role="tab" aria-selected="true" aria-controls="needsMode">Kebutuhan kalori</button>
+        <button class="calculator-mode" id="intakeModeButton" type="button" role="tab" aria-selected="false" aria-controls="intakeMode">Kalori makanan</button>
+      </div>
+      <div id="needsMode" class="calculator-mode-panel" role="tabpanel" aria-labelledby="needsModeButton">
+        <div class="calculator-layout">
+          <form id="calculatorForm" class="card calculator-form">
+            <h2>Data diri</h2>
+            <div class="grid2">
+              <label>Usia (tahun)<input id="calcAge" type="number" min="0" max="120" step="1" placeholder="Contoh: 8" required><small id="calcAgeHelp">Untuk bayi di bawah 1 tahun, masukkan 0.</small></label>
+              <label>Jenis kelamin<select id="calcGender" required><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></label>
+              <label>Berat badan<input id="calcWeight" type="number" min="2" max="400" step="0.1" placeholder="Contoh: 25" required><small>Dalam kilogram (kg).</small></label>
+              <label>Tinggi badan<input id="calcHeight" type="number" min="30" max="250" step="0.1" placeholder="Contoh: 125"><small id="calcHeightHelp">Dalam sentimeter (cm).</small></label>
+              <label class="activity-field">Aktivitas<select id="calcActivity"></select><small id="calcActivityHelp">Pilihan aktivitas menyesuaikan usia.</small></label>
+            </div>
+            <button id="calcBtn" class="primary" type="submit">Hitung kebutuhan kalori</button>
+          </form>
+          <aside class="calculator-info">
+            <span class="calculator-info-icon" aria-hidden="true">⚡</span>
+            <h2>Bagaimana cara menghitungnya?</h2>
+            <p>Rumus disesuaikan dengan usia: estimasi kebutuhan bayi/balita, rumus kebutuhan anak/remaja, atau Mifflin–St Jeor untuk dewasa.</p>
+            <div><b>Bayi &amp; balita (0–2 tahun)</b><span>Estimasi memakai berat badan; faktor aktivitas tidak ditambahkan.</span></div>
+            <div><b>Anak &amp; remaja (3–17 tahun)</b><span>Memakai usia, jenis kelamin, berat, tinggi, dan tingkat aktivitas.</span></div>
+            <div><b>Dewasa (18 tahun ke atas)</b><span>Estimasi BMR disesuaikan dengan tingkat aktivitas.</span></div>
+            <small>Khusus anak, hasil hanya estimasi awal. Pertumbuhan, kondisi kesehatan, dan kebutuhan setiap anak berbeda. Konsultasikan dengan dokter atau ahli gizi anak.</small>
+          </aside>
+        </div>
+        <div id="calcResult" class="calculator-result hidden" aria-live="polite"></div>
+      </div>
+      <div id="intakeMode" class="calculator-mode-panel hidden" role="tabpanel" aria-labelledby="intakeModeButton">
+        <section class="card intake-entry-card">
+          <div class="intake-section-heading"><div><h2>Catat yang kamu makan</h2><p class="muted">Cari makanan, lauk, atau bahan, lalu masukkan jumlah porsinya.</p></div><span class="intake-date" id="intakeDate"></span></div>
+          <form id="intakeForm" class="intake-form" autocomplete="off">
+            <div class="intake-search-wrap">
+              <label for="intakeSearch">Nama makanan<input id="intakeSearch" type="search" placeholder="Contoh: nasi merah, ayam, tempe..." aria-autocomplete="list" aria-controls="intakeSuggestions"></label>
+              <div id="intakeSuggestions" class="intake-suggestions hidden" role="listbox"></div>
+              <div id="intakeSelected" class="intake-selected hidden"></div>
+            </div>
+            <label class="intake-amount-label">Porsi<input id="intakeAmount" type="number" min="0.1" max="100" step="0.1" value="1" required><small id="intakeServing"></small></label>
+            <button id="intakeAddButton" class="primary" type="submit" disabled>Tambah makanan</button>
+          </form>
+          <p class="intake-note">Nilai gizi dihitung dari makanan yang cocok di database. Jika item tidak ditemukan, cari dengan nama bahan yang lebih sederhana.</p>
+        </section>
+        <section class="card intake-summary-card">
+          <div class="intake-section-heading"><div><h2>Ringkasan asupan hari ini</h2><p class="muted">Total dari semua makanan yang kamu catat pada perangkat ini.</p></div><button id="intakeClearButton" type="button" class="danger hidden">Kosongkan catatan</button></div>
+          <div class="intake-totals">
+            <div class="intake-total intake-calories"><span>Kalori</span><strong id="intakeCalories">0</strong><small>kkal</small></div>
+            <div class="intake-total"><span>Protein</span><strong id="intakeProtein">0</strong><small>g</small></div>
+            <div class="intake-total"><span>Karbohidrat</span><strong id="intakeCarbs">0</strong><small>g</small></div>
+            <div class="intake-total"><span>Lemak</span><strong id="intakeFat">0</strong><small>g</small></div>
+          </div>
+          <div id="intakeProgress" class="intake-progress hidden"></div>
+          <div id="intakeItems" class="intake-items"></div>
+        </section>
+        <section class="card intake-advice-card">
+          <h2>Yang bisa ditambah atau diperhatikan</h2>
+          <p class="muted">Saran umum berdasarkan makanan yang tercatat, bukan diagnosis atau target diet.</p>
+          <div id="intakeAdvice" class="intake-advice"><p>Catat beberapa makanan untuk melihat ringkasan dan saran umum.</p></div>
+        </section>
+        <p class="intake-disclaimer">Perhitungan hanya berdasarkan data makanan yang dicatat; minyak, saus, ukuran porsi, dan cara memasak dapat mengubah kandungan gizi. Hasil ini bukan pengganti saran dokter atau ahli gizi. Untuk anak dan remaja, jangan membatasi makan berdasarkan angka kalkulator.</p>
+      </div>
+    </section>
+
+    <section id="recipesPage" class="page hidden">
+      <div class="recipe-heading">
+        <div><span class="eyebrow">MASAK ENAK, HIDUP SEIMBANG</span><h1>Inspirasi resep sehat</h1><p class="muted">Ide menu sederhana untuk sarapan, makan siang, dan makan malam.</p><p id="recipeCount" class="recipe-total"></p><p class="recipe-note">Info gizi merupakan perkiraan per porsi dan dapat berbeda sesuai bahan yang digunakan.</p></div>
+        <span class="recipe-heading-art" aria-hidden="true">🥦</span>
+      </div>
+      <div class="recipe-tools">
+        <label class="recipe-search-label" for="recipeSearch">Cari resep<input id="recipeSearch" type="search" placeholder="Contoh: ayam, oat, tahu..."></label>
+        <label class="recipe-category-label" for="recipeCategory">Kategori<select id="recipeCategory">
+          <option value="">Semua kategori</option><option>Sarapan</option><option>Makan siang</option><option>Makan malam</option><option>Camilan</option>
+        </select></label>
+      </div>
+      <div id="recipeList" class="recipe-grid"></div>
+    </section>
+
+    <section id="profilePage" class="page hidden">
+      <div class="profile-page-heading">
+        <span class="eyebrow">AKUNMU</span>
+        <h1>Profil</h1>
+        <p class="muted">Kelola informasi dan detail akunmu.</p>
+      </div>
+      <div class="profile-layout">
+        <section class="card profile-summary-card">
+          <div id="profileBox"></div>
+        </section>
+        <form id="profileForm" class="card profile-form">
+          <span class="eyebrow">INFORMASI PRIBADI</span>
+          <h2>Edit profil</h2>
+          <p class="profile-form-description">Ubah nama yang ditampilkan di akunmu.</p>
+          <label for="profileName">Nama lengkap<input id="profileName" required minlength="2" maxlength="80" autocomplete="name"></label>
+          <label class="profile-email-label">Email akun<input id="profileEmail" type="email" disabled><small>Email digunakan untuk login dan tidak dapat diubah di sini.</small></label>
+          <button class="primary">Simpan perubahan</button>
+        </form>
+      </div>
+      <form id="passwordForm" class="card profile-form password-form">
+        <span class="eyebrow">KEAMANAN AKUN</span>
+        <h2>Ganti password</h2>
+        <p class="profile-form-description">Password lama tidak dapat dilihat. Masukkan password saat ini untuk membuat password baru.</p>
+        <label for="currentPassword">Password saat ini<input id="currentPassword" type="password" autocomplete="current-password" required></label>
+        <label for="newAccountPassword">Password baru<input id="newAccountPassword" type="password" minlength="8" autocomplete="new-password" required></label>
+        <label for="confirmAccountPassword">Ulangi password baru<input id="confirmAccountPassword" type="password" minlength="8" autocomplete="new-password" required></label>
+        <button class="primary">Simpan password baru</button>
+      </form>
+    </section>
+  </main>
+</div>
+
+<div id="adminApp" class="hidden">
+  <header class="adminbar">
+    <a class="brand light admin-brand" href="admin/#adminOverview" aria-label="Mal-Food Nutrition Admin">
+      <span class="admin-brand-mark" aria-hidden="true">M</span>
+      <span>Mal-Food <span>Nutrition</span></span><b>ADMIN</b>
+    </a>
+    <nav class="admin-nav" aria-label="Navigasi admin">
+      <a href="admin/#adminOverview">Ringkasan</a>
+      <a href="admin/#adminAdmins">Admin</a>
+      <a href="admin/#adminUsers">Pengguna</a>
+      <a href="admin/#adminReports">Laporan</a>
+      <a href="admin/#adminFoodsSection">Makanan</a>
+    </nav>
+    <div class="admin-account"><span><i></i> PANEL ADMIN</span><button id="adminLogout" class="admin-logout">Keluar</button></div>
+  </header>
+  <main class="container admin-container">
+    <section id="adminOverview" class="admin-welcome">
+      <div>
+        <span class="admin-eyebrow">PUSAT KONTROL MAL-FOOD NUTRITION</span>
+        <h1>Dashboard Admin</h1>
+        <p>Kelola pengguna, laporan, dan katalog makanan dalam satu tempat.</p>
+      </div>
+      <div class="admin-welcome-badge"><span aria-hidden="true">✳</span><div><small>HARI INI</small><strong id="adminToday"></strong></div></div>
+      <div class="admin-welcome-decoration" aria-hidden="true"></div>
+    </section>
+
+    <section class="admin-stat-grid" aria-label="Statistik aplikasi">
+      <article class="admin-stat admin-stat-users"><span class="admin-stat-icon" aria-hidden="true">♙</span><small>Total Pengguna</small><strong id="statUsers">0</strong><span class="admin-stat-caption">Seluruh akun terdaftar</span></article>
+      <article class="admin-stat admin-stat-active"><span class="admin-stat-icon" aria-hidden="true">✓</span><small>Pengguna Aktif</small><strong id="statActive">0</strong><span class="admin-stat-caption">Akun dengan akses aktif</span></article>
+      <article class="admin-stat admin-stat-foods"><span class="admin-stat-icon" aria-hidden="true">◉</span><small>Database Makanan</small><strong id="statFoods">0</strong><span class="admin-stat-caption">Item di dalam katalog</span></article>
+      <article class="admin-stat admin-stat-reports"><span class="admin-stat-icon" aria-hidden="true">!</span><small>Laporan Pending</small><strong id="statReports">0</strong><span class="admin-stat-caption">Menunggu tindak lanjut</span></article>
+      <article class="admin-stat admin-stat-visitors"><span class="admin-stat-icon" aria-hidden="true">◎</span><small>Pengunjung Unik</small><strong id="statVisitors">0</strong><span class="admin-stat-caption">Perkiraan perangkat unik</span></article>
+      <article class="admin-stat admin-stat-today"><span class="admin-stat-icon" aria-hidden="true">↗</span><small>Kunjungan Hari Ini</small><strong id="statVisitsToday">0</strong><span class="admin-stat-caption">Sesi tercatat hari ini</span></article>
+    </section>
+
+    <section id="adminAdmins" class="admin-section">
+      <div class="admin-section-heading"><div><span class="admin-section-kicker">AKSES &amp; PERAN</span><h2>Daftar Admin</h2><p>Akun yang saat ini memiliki hak akses administrator.</p></div><span id="adminCount" class="admin-count">0 admin</span></div>
+      <div class="card admin-panel"><div class="tablewrap"><table><thead><tr><th>Nama</th><th>Email</th><th>Status</th><th>Bergabung</th></tr></thead><tbody id="adminsTable"></tbody></table></div></div>
+    </section>
+
+    <section id="adminUsers" class="admin-section">
+      <div class="admin-section-heading"><div><span class="admin-section-kicker">MANAJEMEN AKUN</span><h2>Semua Pengguna</h2><p>Lihat detail, atur akses, dan bantu pengelolaan akun.</p></div><label class="admin-search-label" for="userSearch">Cari pengguna<input id="userSearch" class="search" type="search" placeholder="Nama atau email..."></label></div>
+      <div class="card admin-panel"><div class="tablewrap"><table><thead><tr><th>Nama</th><th>Email</th><th>Lahir</th><th>Status</th><th>Diary</th><th>Aksi</th></tr></thead><tbody id="usersTable"></tbody></table></div></div>
+    </section>
+
+    <section id="adminReports" class="admin-section">
+      <div class="admin-section-heading"><div><span class="admin-section-kicker">BANTUAN AKUN</span><h2>Laporan Lupa Password</h2><p>Tinjau laporan pengguna dan tandai tindak lanjutnya.</p></div></div>
+      <div class="card admin-panel"><div class="tablewrap"><table><thead><tr><th>Email</th><th>Nama</th><th>Pesan</th><th>Status</th><th>Waktu</th><th>Aksi</th></tr></thead><tbody id="reportsTable"></tbody></table></div></div>
+    </section>
+
+    <section id="adminFoodsSection" class="admin-section">
+      <div class="admin-section-heading"><div><span class="admin-section-kicker">KATALOG NUTRISI</span><h2>Database Makanan</h2><p>Perbarui informasi makanan dan kandungan gizinya.</p></div><button id="addFoodBtn" class="primary admin-add-food">+ Tambah makanan</button></div>
+      <div class="card admin-panel admin-food-panel"><div id="adminFoods"></div></div>
+    </section>
+  </main>
+</div>
+
+<div id="foodModal" class="modal hidden" role="presentation">
+  <div class="modalbox admin-dialog" role="dialog" aria-modal="true" aria-labelledby="foodModalTitle">
+    <button type="button" class="x" onclick="closeModal('foodModal')" aria-label="Tutup">×</button>
+    <span class="eyebrow">KATALOG NUTRISI</span>
+    <h2 id="foodModalTitle">Tambah Makanan</h2>
+    <p class="dialog-description">Lengkapi nilai gizi untuk satu ukuran porsi makanan.</p>
+    <form id="foodForm">
+      <input id="foodId" type="hidden">
+      <label for="foodName">Nama makanan<input id="foodName" maxlength="100" required></label>
+      <label for="foodServing">Ukuran porsi<input id="foodServing" maxlength="60" required></label>
+      <div class="grid2">
+        <label for="foodCalories">Kalori (kkal)<input id="foodCalories" type="number" min="0" step="0.1" required></label>
+        <label for="foodProtein">Protein (g)<input id="foodProtein" type="number" min="0" step="0.1" required></label>
+        <label for="foodCarbs">Karbohidrat (g)<input id="foodCarbs" type="number" min="0" step="0.1" required></label>
+        <label for="foodFat">Lemak (g)<input id="foodFat" type="number" min="0" step="0.1" required></label>
+      </div>
+      <div class="dialog-actions"><button type="button" class="dialog-cancel" onclick="closeModal('foodModal')">Batal</button><button class="primary">Simpan makanan</button></div>
+    </form>
+  </div>
+</div>
+
+<div id="diaryAddModal" class="modal hidden" role="presentation">
+  <div class="modalbox admin-dialog" role="dialog" aria-modal="true" aria-labelledby="diaryAddTitle">
+    <button type="button" class="x" onclick="closeModal('diaryAddModal')" aria-label="Tutup">×</button>
+    <span class="eyebrow">CATATAN MAKAN</span>
+    <h2 id="diaryAddTitle">Tambah ke diary</h2>
+    <p id="diaryAddFood" class="muted"></p>
+    <form id="diaryAddForm">
+      <input id="diaryAddFoodId" type="hidden">
+      <label for="diaryAddAmount">Jumlah porsi
+        <input id="diaryAddAmount" type="number" min="0.1" max="100" step="0.1" value="1" required>
+      </label>
+      <p id="diaryAddServing" class="profile-form-description"></p>
+      <div class="dialog-actions"><button type="button" class="dialog-cancel" onclick="closeModal('diaryAddModal')">Batal</button><button id="diaryAddSubmit" class="primary" type="submit">Tambah ke diary</button></div>
+    </form>
+  </div>
+</div>
+
+<div id="userModal" class="modal hidden" role="presentation">
+  <div class="modalbox admin-dialog user-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="userModalTitle">
+    <button type="button" class="x" onclick="closeModal('userModal')" aria-label="Tutup">×</button>
+    <span class="eyebrow">MANAJEMEN AKUN</span>
+    <h2 id="userModalTitle">Detail pengguna</h2>
+    <div id="userDetail"></div>
+  </div>
+</div>
+
+<div id="passwordModal" class="modal hidden" role="presentation">
+  <div class="modalbox admin-dialog" role="dialog" aria-modal="true" aria-labelledby="passwordModalTitle">
+    <button type="button" class="x" onclick="closeModal('passwordModal')" aria-label="Tutup">×</button>
+    <span class="eyebrow">KEAMANAN AKUN</span>
+    <h2 id="passwordModalTitle">Atur password baru</h2>
+    <p id="passwordModalDescription" class="muted">Masukkan password baru minimal 8 karakter.</p>
+    <form id="adminPasswordForm">
+      <input id="passwordTargetId" type="hidden">
+      <input id="passwordReportId" type="hidden">
+      <label for="adminNewPassword">Password baru<input id="adminNewPassword" type="password" minlength="8" autocomplete="new-password" required></label>
+      <label for="adminConfirmPassword">Ulangi password<input id="adminConfirmPassword" type="password" minlength="8" autocomplete="new-password" required></label>
+      <div class="dialog-actions"><button type="button" class="dialog-cancel" onclick="closeModal('passwordModal')">Batal</button><button id="adminPasswordSubmit" class="primary">Simpan password baru</button></div>
+    </form>
+  </div>
+</div>
+
+<div id="confirmModal" class="modal hidden" role="presentation">
+  <div class="modalbox admin-dialog confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
+    <button type="button" class="x" onclick="closeModal('confirmModal')" aria-label="Tutup">×</button>
+    <span id="confirmIcon" class="confirm-icon" aria-hidden="true">?</span>
+    <span class="eyebrow">KONFIRMASI</span>
+    <h2 id="confirmTitle">Lanjutkan tindakan?</h2>
+    <p id="confirmMessage" class="dialog-description"></p>
+    <div class="dialog-actions"><button type="button" class="dialog-cancel" onclick="resolveConfirm(false)">Batal</button><button id="confirmActionButton" type="button" class="primary" onclick="resolveConfirm(true)">Lanjutkan</button></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
