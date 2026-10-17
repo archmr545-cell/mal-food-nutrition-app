@@ -1,6 +1,6 @@
-"""Main entrypoint for the edge-tts package."""
+import sys
 
-from .util import main
+from .cli import main
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
